@@ -69,7 +69,7 @@ export default function ChatLayout() {
         </h1>
         <div className="relative flex items-center gap-3" ref={menuRef}>
           <button
-            onClick={() => setShowAccountMenu(!showAccountMenu)}
+            onClick={(e) => { e.stopPropagation(); setShowAccountMenu(!showAccountMenu); }}
             className="rounded-full p-0.5 transition-opacity hover:opacity-80"
             title={address || ""}
           >

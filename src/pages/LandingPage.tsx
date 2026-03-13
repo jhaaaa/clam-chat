@@ -95,10 +95,12 @@ export default function LandingPage() {
         {/* Loading state */}
         {isLoading && (
           <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-8 dark:border-gray-700 dark:bg-gray-800">
-            <LoadingSpinner size="lg" label="Signing you in..." />
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              Your wallet may ask you to sign a message. This authorizes this browser to send and receive messages on your behalf. It does not cost gas or move any funds.
-            </p>
+            <LoadingSpinner size="lg" label={authMethod === "wallet" ? "Signing you in..." : "Creating your account..."} />
+            {authMethod === "wallet" && (
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                Your wallet may ask you to sign a message. This authorizes this browser to send and receive messages on your behalf. It does not cost gas or move any funds.
+              </p>
+            )}
           </div>
         )}
 
@@ -119,7 +121,7 @@ export default function LandingPage() {
               </p>
               <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
                 {hasSavedKey
-                  ? "Sign in with the account saved in this browser."
+                  ? "Sign in with the account saved on this device."
                   : "No email, phone, or wallet needed. Your account is saved securely on your device."}
               </p>
               <button

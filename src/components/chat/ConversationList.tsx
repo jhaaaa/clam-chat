@@ -103,20 +103,18 @@ export default function ConversationList() {
             <LoadingSpinner size="md" label="Loading conversations..." />
           </div>
         ) : activeList.length === 0 ? (
-          <div className="py-8 text-center">
+          <div className="flex flex-col items-center py-8">
+            <img
+              src="/clam.svg"
+              alt=""
+              className="mb-3 h-10 w-10 animate-bounce opacity-50"
+              style={{ animationDuration: "2s" }}
+            />
             <p className="text-sm text-gray-500 dark:text-gray-500">
               {activeTab === "inbox"
                 ? "No conversations yet"
                 : "No message requests"}
             </p>
-            {activeTab === "inbox" && (
-              <button
-                onClick={() => setShowNewConversation(true)}
-                className="mt-2 text-sm text-indigo-600 hover:text-indigo-700"
-              >
-                Start a conversation
-              </button>
-            )}
           </div>
         ) : (
           <div className="space-y-1">
