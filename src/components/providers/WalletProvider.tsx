@@ -1,15 +1,14 @@
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { mainnet, sepolia } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { injected, metaMask, walletConnect } from "wagmi/connectors";
+import { injected, walletConnect } from "wagmi/connectors";
 
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "PLACEHOLDER";
 
 const config = createConfig({
   connectors: [
-    metaMask(),
-    walletConnect({ projectId, showQrModal: true }),
     injected(),
+    walletConnect({ projectId, showQrModal: true }),
   ],
   chains: [mainnet, sepolia],
   transports: {

@@ -120,13 +120,13 @@ export default function LandingPage() {
               <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
                 {hasSavedKey
                   ? "Sign in with the account saved in this browser."
-                  : "No wallet needed. We'll create an account that lives in your browser."}
+                  : "No email, phone, or wallet needed. Your account is saved securely on your device."}
               </p>
               <button
                 onClick={hasSavedKey ? handleSignIn : handleCreateAccount}
                 className="btn-rainbow w-full"
               >
-                {hasSavedKey ? "Sign in" : "Get started"}
+                {hasSavedKey ? "Sign in" : "Create account"}
               </button>
             </div>
 
@@ -183,7 +183,7 @@ export default function LandingPage() {
                   onClick={() => setShowImport(!showImport)}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
                 >
-                  {showImport ? "Cancel import" : "I have an account on another device"}
+                  {showImport ? "Cancel import" : "Use a different account by importing its account key"}
                 </button>
 
                 {showImport && (

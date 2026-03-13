@@ -5,18 +5,52 @@ interface ConnectWalletModalProps {
   onClose: () => void;
 }
 
-function connectorLabel(id: string, name: string): string | null {
-  if (id === "metaMaskSDK" || id === "metaMask") return "MetaMask";
-  if (id === "walletConnect") return "WalletConnect";
-  if (id === "injected" && name !== "MetaMask") return name || "Browser Wallet";
-  // Skip duplicate injected MetaMask entry
-  return null;
+// Check if MetaMask extension is installed
+function hasMetaMask(): boolean {
+  return typeof window !== "undefined" && !!(window as any).ethereum?.isMetaMask;
 }
 
-function connectorIcon(id: string): string {
-  if (id === "metaMaskSDK" || id === "metaMask") return "\u{1F98A}";
-  if (id === "walletConnect") return "\u{1F517}";
-  return "\u{1F310}";
+interface WalletOption {
+  id: string;
+  label: string;
+  icon: string;
+  closesModal: boolean;
+}
+
+function getWalletOptions(connectorIds: string[]): WalletOption[] {
+  const options: WalletOption[] = [];
+
+  // If MetaMask is installed, show it via the injected connector
+  if (connectorIds.includes("injected") && hasMetaMask()) {
+    options.push({
+      id: "injected",
+      label: "MetaMask",
+      icon: "\u{1F98A}",
+      closesModal: false,
+    });
+  }
+
+  // Always show WalletConnect — works with any mobile wallet
+  if (connectorIds.includes("walletConnect")) {
+    options.push({
+      id: "walletConnect",
+      label: "WalletConnect",
+      icon: "\u{1F517}",
+      closesModal: true, // Close our modal so the QR overlay can appear
+    });
+  }
+
+  // If no MetaMask but there's an injected wallet, show it generically
+  if (!hasMetaMask() && connectorIds.includes("injected")) {
+    options.push({
+      id: "injected",
+      label: "Browser Wallet",
+      icon: "\u{1F310}",
+      closesModal: false,
+    });
+  }
+
+  return options;
 }
 
 export default function ConnectWalletModal({ onClose }: ConnectWalletModalProps) {
@@ -27,16 +61,15 @@ export default function ConnectWalletModal({ onClose }: ConnectWalletModalProps)
     if (isSuccess) onClose();
   }, [isSuccess, onClose]);
 
-  // Deduplicate connectors by label
-  const seen = new Set<string>();
-  const walletOptions = connectors
-    .map((connector) => {
-      const label = connectorLabel(connector.id, connector.name);
-      if (!label || seen.has(label)) return null;
-      seen.add(label);
-      return { connector, label, icon: connectorIcon(connector.id) };
-    })
-    .filter(Boolean) as { connector: (typeof connectors)[number]; label: string; icon: string }[];
+  const connectorIds = connectors.map((c) => c.id);
+  const walletOptions = getWalletOptions(connectorIds);
+
+  const handleConnect = (option: WalletOption) => {
+    const connector = connectors.find((c) => c.id === option.id);
+    if (!connector) return;
+    if (option.closesModal) onClose();
+    connect({ connector });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -55,15 +88,15 @@ export default function ConnectWalletModal({ onClose }: ConnectWalletModalProps)
         </div>
 
         <div className="space-y-2">
-          {walletOptions.map(({ connector, label, icon }) => (
+          {walletOptions.map((option) => (
             <button
-              key={connector.id}
-              onClick={() => connect({ connector })}
+              key={option.id}
+              onClick={() => handleConnect(option)}
               disabled={isPending}
               className="flex w-full items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
             >
-              <span className="text-2xl">{icon}</span>
-              <span className="font-medium">{label}</span>
+              <span className="text-2xl">{option.icon}</span>
+              <span className="font-medium">{option.label}</span>
             </button>
           ))}
         </div>
