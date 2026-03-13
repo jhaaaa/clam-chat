@@ -1,35 +1,16 @@
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { mainnet, sepolia } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  RainbowKitProvider,
-  connectorsForWallets,
-} from "@rainbow-me/rainbowkit";
-import {
-  metaMaskWallet,
-  walletConnectWallet,
-  injectedWallet,
-} from "@rainbow-me/rainbowkit/wallets";
-import "@rainbow-me/rainbowkit/styles.css";
+import { injected, metaMask, walletConnect } from "wagmi/connectors";
 
-// Explicitly list wallets to exclude Coinbase Smart Wallet,
-// which conflicts with the Cross-Origin-Opener-Policy: same-origin
-// header that XMTP requires for SharedArrayBuffer/WASM.
-const connectors = connectorsForWallets(
-  [
-    {
-      groupName: "Popular",
-      wallets: [metaMaskWallet, walletConnectWallet, injectedWallet],
-    },
-  ],
-  {
-    appName: "Clam Chat",
-    projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "PLACEHOLDER",
-  }
-);
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "PLACEHOLDER";
 
 const config = createConfig({
-  connectors,
+  connectors: [
+    metaMask(),
+    walletConnect({ projectId, showQrModal: true }),
+    injected(),
+  ],
   chains: [mainnet, sepolia],
   transports: {
     [mainnet.id]: http("https://eth.llamarpc.com"),
@@ -46,9 +27,7 @@ export default function WalletProvider({
 }) {
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>{children}</RainbowKitProvider>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );
 }

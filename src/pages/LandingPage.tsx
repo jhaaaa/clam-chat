@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
+import ConnectWalletModal from "@/components/ui/ConnectWalletModal";
 import { useChatStore } from "@/store/chatStore";
 import { useXmtp } from "@/components/providers/XmtpProvider";
 import {
@@ -18,6 +18,7 @@ export default function LandingPage() {
   const { address: walletAddress, isConnected, isReconnecting } = useAccount();
   const { setAuth, authMethod } = useChatStore();
   const { client, isLoading, error } = useXmtp();
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importValue, setImportValue] = useState("");
@@ -139,16 +140,12 @@ export default function LandingPage() {
             {/* Wallet auth */}
             <div className="rounded-xl border border-gray-200 p-6 dark:border-gray-700">
               <p className="mb-4 text-lg font-medium">Connect a wallet</p>
-              <ConnectButton.Custom>
-                {({ openConnectModal }) => (
-                  <button
-                    onClick={openConnectModal}
-                    className="btn-rainbow w-full"
-                  >
-                    Connect wallet
-                  </button>
-                )}
-              </ConnectButton.Custom>
+              <button
+                onClick={() => setShowWalletModal(true)}
+                className="btn-rainbow w-full"
+              >
+                Connect wallet
+              </button>
             </div>
 
             {/* Advanced options */}
@@ -215,6 +212,10 @@ export default function LandingPage() {
           </div>
         )}
       </div>
+
+      {showWalletModal && (
+        <ConnectWalletModal onClose={() => setShowWalletModal(false)} />
+      )}
     </div>
   );
 }
