@@ -1,6 +1,18 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+html, body, #root {
+  height: 100dvh;
+  overflow: hidden;
+  max-width: 100vw;
+}
+
+/* Allow landing page to scroll */
+body:has(.landing-page) {
+  height: auto;
+  overflow: auto;
+}
+
 .btn-rainbow {
   position: relative;
   padding: 0.625rem 1.5rem;

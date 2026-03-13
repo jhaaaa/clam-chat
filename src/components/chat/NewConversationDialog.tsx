@@ -79,14 +79,41 @@ export default function NewConversationDialog({
 
       // Create the DM
       setStatus("Starting conversation...");
-      const dm = await client.conversations.createDmWithIdentifier(identifier);
+      let dm;
+      try {
+        dm = await client.conversations.createDmWithIdentifier(identifier);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("synced") && msg.includes("succeeded")) {
+          console.log("[clam-chat] DM sync info:", msg);
+          // DM was created but sync noise lost the reference — recover it
+          try {
+            await client.conversations.syncAll();
+            dm = await client.conversations.createDmWithIdentifier(identifier);
+          } catch (retryErr) {
+            const retryMsg = retryErr instanceof Error ? retryErr.message : "";
+            if (retryMsg.includes("synced") && retryMsg.includes("succeeded")) {
+              console.log("[clam-chat] DM retry sync info:", retryMsg);
+            }
+            // dm may still be undefined — fall through to onClose()
+          }
+        } else {
+          throw err;
+        }
+      }
 
-      onCreated(dm);
+      if (dm) {
+        onCreated(dm);
+      } else {
+        // DM was created on the network but we couldn't get a local reference.
+        // Close dialog — the conversation list will pick it up on refresh.
+        onClose();
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to create conversation";
       setError(message);
-      console.error("[hollachat] Failed to create conversation:", err);
+      console.error("[clam-chat] Failed to create conversation:", err);
     } finally {
       setIsCreating(false);
       setStatus("");
@@ -94,8 +121,8 @@ export default function NewConversationDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center md:px-4">
+      <div className="w-full max-h-[90dvh] overflow-y-auto rounded-t-xl bg-white p-6 shadow-xl md:mb-0 md:max-w-md md:rounded-xl dark:bg-gray-800">
         <h2 className="mb-1 text-lg font-semibold dark:text-gray-100">New DM</h2>
         <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
           Enter an address or ENS name to start a conversation.
@@ -108,7 +135,7 @@ export default function NewConversationDialog({
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder="0x... or name.eth"
           autoFocus
-          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
         />
 
         {status && !error && (

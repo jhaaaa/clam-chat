@@ -1,5 +1,5 @@
 {
-  "name": "hollachat",
+  "name": "clam-chat",
   "version": "1.0.0",
   "type": "module",
   "description": "",
@@ -10,15 +10,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jhaaaa/hollachat.git"
+    "url": "git+https://github.com/jhaaaa/clam-chat.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/jhaaaa/hollachat/issues"
+    "url": "https://github.com/jhaaaa/clam-chat/issues"
   },
-  "homepage": "https://github.com/jhaaaa/hollachat#readme",
+  "homepage": "https://github.com/jhaaaa/clam-chat#readme",
   "dependencies": {
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",

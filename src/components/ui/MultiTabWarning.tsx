@@ -4,14 +4,14 @@ export default function MultiTabWarning() {
   const [blocked, setBlocked] = useState(false);
 
   const handleUseThisTab = useCallback(() => {
-    const ch = new BroadcastChannel("hollachat-tab");
+    const ch = new BroadcastChannel("clam-chat-tab");
     ch.postMessage("yield");
     ch.close();
     setBlocked(false);
   }, []);
 
   useEffect(() => {
-    const channel = new BroadcastChannel("hollachat-tab");
+    const channel = new BroadcastChannel("clam-chat-tab");
 
     const onMessage = (e: MessageEvent) => {
       if (e.data === "ping") {

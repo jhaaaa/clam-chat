@@ -72,7 +72,7 @@ export default function MessageList({
   return (
     <div
       ref={containerRef}
-      className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
+      className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4"
     >
       <div className="space-y-3">
         {userMessages.map((msg) => (

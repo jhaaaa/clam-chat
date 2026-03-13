@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "hollachat-dark-mode";
+const STORAGE_KEY = "clam-chat-dark-mode";
 
 export default function DarkModeToggle() {
   const [isDark, setIsDark] = useState(() => {

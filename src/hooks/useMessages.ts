@@ -23,7 +23,7 @@ export function useMessages(conversation: Conversation | null) {
       const msgs = await conversation.messages();
       setMessages(msgs);
     } catch (err) {
-      console.error("[hollachat] Failed to load messages:", err);
+      console.error("[clam-chat] Failed to load messages:", err);
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +54,7 @@ export function useMessages(conversation: Conversation | null) {
         const msgs = await conversation.messages();
         setMessages(msgs);
       } catch (err) {
-        console.error("[hollachat] Failed to reload messages:", err);
+        console.error("[clam-chat] Failed to reload messages:", err);
       }
     };
 
@@ -79,12 +79,12 @@ export function useMessages(conversation: Conversation | null) {
             });
           },
           onError: (error: Error) => {
-            console.error("[hollachat] Message stream error:", error);
+            console.error("[clam-chat] Message stream error:", error);
           },
         });
         streamRef.current = stream;
       } catch (err) {
-        console.error("[hollachat] Failed to start message stream:", err);
+        console.error("[clam-chat] Failed to start message stream:", err);
       }
     };
 
@@ -101,10 +101,26 @@ export function useMessages(conversation: Conversation | null) {
     async (text: string) => {
       if (!conversation || !text.trim()) return;
       try {
+        // Sync before sending to ensure conversation is active (fixes "Group is inactive")
+        await conversation.sync();
         await conversation.sendText(text.trim());
       } catch (err) {
-        console.error("[hollachat] Failed to send message:", err);
-        throw err;
+        // XMTP SDK sync noise — not a real error
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("synced") && msg.includes("succeeded")) {
+          console.log("[clam-chat] Send sync info:", msg);
+        } else {
+          console.error("[clam-chat] Failed to send message:", err);
+          throw err;
+        }
+      }
+      // Refresh messages in case the stream didn't pick it up
+      try {
+        await conversation.sync();
+        const msgs = await conversation.messages();
+        setMessages(msgs);
+      } catch {
+        // Best-effort refresh
       }
     },
     [conversation]
@@ -123,7 +139,7 @@ export function useMessages(conversation: Conversation | null) {
           schema: ReactionSchema.Unicode,
         });
       } catch (err) {
-        console.error("[hollachat] Failed to send reaction:", err);
+        console.error("[clam-chat] Failed to send reaction:", err);
       }
     },
     [conversation]
@@ -133,6 +149,7 @@ export function useMessages(conversation: Conversation | null) {
     async (referenceId: string, referenceInboxId: string, text: string) => {
       if (!conversation || !text.trim()) return;
       try {
+        await conversation.sync();
         const encoded = await encodeText(text.trim());
         await conversation.sendReply({
           reference: referenceId,
@@ -140,8 +157,20 @@ export function useMessages(conversation: Conversation | null) {
           content: encoded,
         });
       } catch (err) {
-        console.error("[hollachat] Failed to send reply:", err);
-        throw err;
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("synced") && msg.includes("succeeded")) {
+          console.log("[clam-chat] Reply sync info:", msg);
+        } else {
+          console.error("[clam-chat] Failed to send reply:", err);
+          throw err;
+        }
+      }
+      try {
+        await conversation.sync();
+        const msgs = await conversation.messages();
+        setMessages(msgs);
+      } catch {
+        // Best-effort refresh
       }
     },
     [conversation]
@@ -153,7 +182,7 @@ export function useMessages(conversation: Conversation | null) {
       try {
         await conversation.sendAttachment(attachment);
       } catch (err) {
-        console.error("[hollachat] Failed to send attachment:", err);
+        console.error("[clam-chat] Failed to send attachment:", err);
         throw err;
       }
     },
@@ -166,7 +195,7 @@ export function useMessages(conversation: Conversation | null) {
       try {
         await conversation.sendRemoteAttachment(remoteAttachment);
       } catch (err) {
-        console.error("[hollachat] Failed to send remote attachment:", err);
+        console.error("[clam-chat] Failed to send remote attachment:", err);
         throw err;
       }
     },

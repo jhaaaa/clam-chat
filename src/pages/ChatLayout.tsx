@@ -12,7 +12,7 @@ import ConversationList from "@/components/chat/ConversationList";
 export default function ChatLayout() {
   const navigate = useNavigate();
   const { client, isLoading, disconnect } = useXmtp();
-  const { address, authMethod, selectedConversation } = useChatStore();
+  const { address, authMethod, selectedConversation, setSelectedConversation } = useChatStore();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [copiedItem, setCopiedItem] = useState<"key" | "address" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -27,13 +27,13 @@ export default function ChatLayout() {
   // Close menu on outside click
   useEffect(() => {
     if (!showAccountMenu) return;
-    const handleClick = (e: MouseEvent) => {
+    const handleClick = (e: PointerEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowAccountMenu(false);
       }
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("pointerdown", handleClick);
+    return () => document.removeEventListener("pointerdown", handleClick);
   }, [showAccountMenu]);
 
   if (isLoading) {
@@ -59,17 +59,29 @@ export default function ChatLayout() {
   };
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <MultiTabWarning />
       {/* Header */}
       <header className="flex items-center justify-between border-b border-gray-200 px-2 py-2 md:px-4 md:py-3 dark:border-gray-700">
-        <h1 className="flex items-center gap-1.5 text-base font-bold md:text-lg">
+        <button
+          onClick={() => setSelectedConversation(null)}
+          className="flex items-center gap-1.5 text-base font-bold md:text-lg"
+        >
           <img src="/clam.svg" alt="" className="h-6 w-6" />
           Clam Chat
-        </h1>
+        </button>
         <div className="relative flex items-center gap-3" ref={menuRef}>
           <button
-            onClick={(e) => { e.stopPropagation(); setShowAccountMenu(!showAccountMenu); }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              // Use pointerUp + setTimeout to avoid synthetic click events
+              // hitting the DarkModeToggle when the menu renders
+              if (!showAccountMenu) {
+                setTimeout(() => setShowAccountMenu(true), 150);
+              } else {
+                setShowAccountMenu(false);
+              }
+            }}
             className="rounded-full p-0.5 transition-opacity hover:opacity-80"
             title={address || ""}
           >
@@ -82,7 +94,11 @@ export default function ChatLayout() {
 
           {/* Account dropdown menu */}
           {showAccountMenu && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            <div
+              className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
               {/* Avatar + Address */}
               <div className="flex items-center gap-3">
                 {address && <AddressAvatar address={address} size={40} />}
@@ -158,10 +174,10 @@ export default function ChatLayout() {
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        <div className={`${selectedConversation ? 'hidden md:flex' : 'flex'} h-full w-full flex-col border-r border-gray-200 bg-white md:w-80 dark:border-gray-700 dark:bg-gray-900`}>
+        <div className={`${selectedConversation ? 'hidden md:flex' : 'flex'} h-full w-full flex-col border-r border-gray-200 bg-white md:w-80 md:shrink-0 dark:border-gray-700 dark:bg-gray-900`}>
           <ConversationList />
         </div>
-        <div className={`${!selectedConversation ? 'hidden md:flex' : 'flex'} flex-1 flex-col overflow-hidden bg-white dark:bg-gray-900`}>
+        <div className={`${!selectedConversation ? 'hidden md:flex' : 'flex'} w-full min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-gray-900`}>
           <Outlet />
         </div>
       </div>

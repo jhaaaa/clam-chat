@@ -13,11 +13,70 @@ import {
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import NetworkSwitch from "@/components/ui/NetworkSwitch";
 
+function WalletLoadingState({
+  authMethod,
+  hasSavedKey,
+  onCancel,
+}: {
+  authMethod: string | null;
+  hasSavedKey: boolean;
+  onCancel: () => void;
+}) {
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    if (authMethod !== "wallet") return;
+    const timer = setTimeout(() => setShowHint(true), 5000);
+    return () => clearTimeout(timer);
+  }, [authMethod]);
+
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-8 dark:border-gray-700 dark:bg-gray-800">
+      <LoadingSpinner
+        size="lg"
+        label={
+          authMethod === "wallet"
+            ? "Signing you in..."
+            : hasSavedKey
+              ? "Accessing your account..."
+              : "Creating your account..."
+        }
+      />
+      {authMethod === "wallet" && !showHint && (
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+          Your wallet may ask you to sign a message. This does not cost gas or move any funds.
+        </p>
+      )}
+      {authMethod === "wallet" && showHint && (
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-center text-sm text-gray-600 dark:text-gray-300">
+            Open MetaMask to approve the signature request.
+          </p>
+          <div className="flex gap-2">
+            <a
+              href="metamask://"
+              className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600"
+            >
+              Open MetaMask
+            </a>
+            <button
+              onClick={onCancel}
+              className="rounded-lg px-4 py-2 text-sm text-gray-500 transition-colors hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { address: walletAddress, isConnected, isReconnecting } = useAccount();
   const { setAuth, authMethod } = useChatStore();
-  const { client, isLoading, error } = useXmtp();
+  const { client, isLoading, error, disconnect: xmtpDisconnect } = useXmtp();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -81,7 +140,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+    <div className="landing-page flex min-h-screen flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -94,20 +153,23 @@ export default function LandingPage() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-8 dark:border-gray-700 dark:bg-gray-800">
-            <LoadingSpinner size="lg" label={authMethod === "wallet" ? "Signing you in..." : "Creating your account..."} />
-            {authMethod === "wallet" && (
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                Your wallet may ask you to sign a message. This authorizes this browser to send and receive messages on your behalf. It does not cost gas or move any funds.
-              </p>
-            )}
-          </div>
+          <WalletLoadingState
+            authMethod={authMethod}
+            hasSavedKey={hasSavedKey}
+            onCancel={xmtpDisconnect}
+          />
         )}
 
         {/* Error state — only show if the user is actively trying to connect */}
         {error && authMethod && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center dark:border-red-800 dark:bg-red-950">
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+            <button
+              onClick={() => xmtpDisconnect()}
+              className="mt-3 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-900 dark:bg-gray-600 dark:hover:bg-gray-500"
+            >
+              Try again
+            </button>
           </div>
         )}
 
@@ -195,7 +257,7 @@ export default function LandingPage() {
                       value={importValue}
                       onChange={(e) => setImportValue(e.target.value)}
                       placeholder="Paste your account key"
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                     />
                     {importError && (
                       <p className="text-xs text-red-600">{importError}</p>

@@ -85,25 +85,34 @@ export default function ConversationItem({
           }
         }
       } catch (err) {
-        console.error("[hollachat] Error loading conversation label:", err);
+        console.error("[clam-chat] Error loading conversation label:", err);
       }
 
-      // Load last message separately so a failure here doesn't break the label
+      // Load last message preview — skip reactions/system messages to find actual content
       try {
-        const lastMsg = await conversation.lastMessage();
-        if (!cancelled && lastMsg) {
-          const text = extractText(lastMsg);
-          if (text) {
-            setLastMessagePreview(
-              text.length > 60 ? text.slice(0, 60) + "..." : text
-            );
-          } else {
-            setLastMessagePreview("[attachment]");
+        const recentMessages = await conversation.messages({ limit: 5n });
+        if (!cancelled && recentMessages.length > 0) {
+          // Find the most recent message with displayable text
+          let foundText = false;
+          for (const msg of recentMessages) {
+            const text = extractText(msg);
+            if (text) {
+              setLastMessagePreview(
+                text.length > 60 ? text.slice(0, 60) + "..." : text
+              );
+              setLastMessageTime(msg.sentAt);
+              foundText = true;
+              break;
+            }
           }
-          setLastMessageTime(lastMsg.sentAt);
+          // If no text found in recent messages, use the latest timestamp
+          if (!foundText && recentMessages[0]) {
+            setLastMessagePreview("[attachment]");
+            setLastMessageTime(recentMessages[0].sentAt);
+          }
         }
       } catch (err) {
-        console.error("[hollachat] Error loading last message:", err);
+        console.error("[clam-chat] Error loading last message:", err);
       }
     };
 

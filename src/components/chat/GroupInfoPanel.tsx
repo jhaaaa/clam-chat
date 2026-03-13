@@ -60,7 +60,7 @@ export default function GroupInfoPanel({
         setIsAdmin(superAdmin || regularAdmin);
       }
     } catch (err) {
-      console.error("[hollachat] Failed to load members:", err);
+      console.error("[clam-chat] Failed to load members:", err);
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +76,7 @@ export default function GroupInfoPanel({
       await group.updateName(nameInput.trim());
       setEditingName(false);
     } catch (err) {
-      console.error("[hollachat] Failed to update group name:", err);
+      console.error("[clam-chat] Failed to update group name:", err);
       setError("Failed to update name");
     }
   };
@@ -139,7 +139,7 @@ export default function GroupInfoPanel({
       await group.removeMembers([inboxId]);
       loadMembers();
     } catch (err) {
-      console.error("[hollachat] Failed to remove member:", err);
+      console.error("[clam-chat] Failed to remove member:", err);
       setError("Failed to remove member");
     }
   };
@@ -149,7 +149,7 @@ export default function GroupInfoPanel({
       await group.addAdmin(inboxId);
       loadMembers();
     } catch (err) {
-      console.error("[hollachat] Failed to promote to admin:", err);
+      console.error("[clam-chat] Failed to promote to admin:", err);
       setError("Failed to promote to admin");
     }
   };
@@ -159,7 +159,7 @@ export default function GroupInfoPanel({
       await group.removeAdmin(inboxId);
       loadMembers();
     } catch (err) {
-      console.error("[hollachat] Failed to demote admin:", err);
+      console.error("[clam-chat] Failed to demote admin:", err);
       setError("Failed to demote admin");
     }
   };
@@ -169,7 +169,7 @@ export default function GroupInfoPanel({
       await group.addSuperAdmin(inboxId);
       loadMembers();
     } catch (err) {
-      console.error("[hollachat] Failed to promote to super admin:", err);
+      console.error("[clam-chat] Failed to promote to super admin:", err);
       setError("Failed to promote to super admin");
     }
   };
@@ -179,7 +179,7 @@ export default function GroupInfoPanel({
       await group.removeSuperAdmin(inboxId);
       loadMembers();
     } catch (err) {
-      console.error("[hollachat] Failed to demote super admin:", err);
+      console.error("[clam-chat] Failed to demote super admin:", err);
       setError("Failed to demote super admin");
     }
   };
@@ -189,7 +189,7 @@ export default function GroupInfoPanel({
       await group.requestRemoval();
       onLeft();
     } catch (err) {
-      console.error("[hollachat] Failed to leave group:", err);
+      console.error("[clam-chat] Failed to leave group:", err);
       setError("Failed to leave group");
     }
   };
@@ -197,8 +197,8 @@ export default function GroupInfoPanel({
   const selfInboxId = client?.inboxId || "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl dark:bg-gray-800">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center md:px-4">
+      <div className="w-full max-h-[90dvh] overflow-y-auto rounded-t-xl bg-white shadow-xl md:mb-0 md:max-w-md md:rounded-xl dark:bg-gray-800">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-700">
           <h2 className="text-lg font-semibold dark:text-gray-100">Group info</h2>
@@ -224,7 +224,7 @@ export default function GroupInfoPanel({
                   onChange={(e) => setNameInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleUpdateName()}
                   autoFocus
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                 />
                 <button
                   onClick={handleUpdateName}
@@ -361,7 +361,7 @@ export default function GroupInfoPanel({
                   onChange={(e) => setAddInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddMember()}
                   placeholder="0x... or name.eth"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                 />
                 <button
                   onClick={handleAddMember}

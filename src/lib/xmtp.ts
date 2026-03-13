@@ -4,6 +4,15 @@ import { XMTP_NETWORKS } from "./constants";
 
 const MAX_INSTALLATIONS_BEFORE_CLEANUP = 9;
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(message)), ms)
+    ),
+  ]);
+}
+
 export async function createXmtpClient(
   signer: Signer,
   network: XmtpNetwork
@@ -11,15 +20,25 @@ export async function createXmtpClient(
   const env = XMTP_NETWORKS[network].env;
 
   try {
+    console.log("[clam-chat] Creating client...");
     const client = await Client.create(signer, {
       env,
       appVersion: "clam-chat/1.0",
     });
+    console.log("[clam-chat] Client created successfully");
 
-    // Proactively clean up stale installations before hitting the 10/10 hard limit
-    await pruneInstallationsIfNeeded(client);
+    // Proactively clean up stale installations in the background.
+    // This requires a wallet signature, so we don't await it — otherwise
+    // WalletConnect users would get a second sign prompt immediately.
+    pruneInstallationsIfNeeded(client);
 
-    await client.conversations.syncAll([ConsentState.Allowed]);
+    console.log("[clam-chat] Syncing conversations...");
+    await withTimeout(
+      client.conversations.syncAll([ConsentState.Allowed]),
+      15_000,
+      "Conversation sync timed out"
+    );
+    console.log("[clam-chat] Sync complete");
     return client;
   } catch (err) {
     // If we somehow still hit 10/10, use static revocation and retry

@@ -105,17 +105,46 @@ export default function NewGroupDialog({
       }
 
       setStatus("Creating group...");
-      const group = await client.conversations.createGroupWithIdentifiers(
-        identifiers,
-        { groupName: groupName.trim() }
-      );
+      let group;
+      try {
+        group = await client.conversations.createGroupWithIdentifiers(
+          identifiers,
+          { groupName: groupName.trim() }
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (message.includes("synced") && message.includes("succeeded")) {
+          console.log("[clam-chat] Group creation sync info:", message);
+          // Group was created but sync noise lost the reference — recover it
+          try {
+            await client.conversations.syncAll();
+            group = await client.conversations.createGroupWithIdentifiers(
+              identifiers,
+              { groupName: groupName.trim() }
+            );
+          } catch (retryErr) {
+            const retryMsg = retryErr instanceof Error ? retryErr.message : "";
+            if (retryMsg.includes("synced") && retryMsg.includes("succeeded")) {
+              console.log("[clam-chat] Group retry sync info:", retryMsg);
+            }
+          }
+        } else {
+          throw err;
+        }
+      }
 
-      onCreated(group);
+      if (group) {
+        onCreated(group);
+      } else {
+        // Group was created on the network but we couldn't get a local reference.
+        // Close dialog — the conversation list will pick it up on refresh.
+        onClose();
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to create group";
       setError(message);
-      console.error("[hollachat] Failed to create group:", err);
+      console.error("[clam-chat] Failed to create group:", err);
     } finally {
       setIsCreating(false);
       setStatus("");
@@ -123,8 +152,8 @@ export default function NewGroupDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center md:px-4">
+      <div className="w-full max-h-[90dvh] overflow-y-auto rounded-t-xl bg-white p-6 shadow-xl md:mb-0 md:max-w-md md:rounded-xl dark:bg-gray-800">
         <h2 className="mb-1 text-lg font-semibold dark:text-gray-100">New group</h2>
         <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
           Give your group a name and add members.
@@ -137,7 +166,7 @@ export default function NewGroupDialog({
           onChange={(e) => setGroupName(e.target.value)}
           placeholder="Group name"
           autoFocus
-          className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+          className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
         />
 
         {/* Add member input */}
@@ -148,7 +177,7 @@ export default function NewGroupDialog({
             onChange={(e) => setMemberInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddMember()}
             placeholder="0x... or name.eth"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
           />
           <button
             onClick={handleAddMember}

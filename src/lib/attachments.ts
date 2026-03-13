@@ -124,7 +124,7 @@ export function getUploader(): (encrypted: EncryptedAttachment) => Promise<strin
     return pinataUploadPayload;
   }
   console.warn(
-    "[hollachat] Pinata not configured — remote attachments will only work locally. " +
+    "[clam-chat] Pinata not configured — remote attachments will only work locally. " +
     "Set VITE_PINATA_JWT and VITE_PINATA_GATEWAY in .env for cross-device support."
   );
   return devUploadPayload;

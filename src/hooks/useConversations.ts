@@ -41,7 +41,7 @@ export function useConversations(client: Client | null) {
       );
       setRequests(filteredUnknown);
     } catch (err) {
-      console.error("[hollachat] Failed to load conversations:", err);
+      console.error("[clam-chat] Failed to load conversations:", err);
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +55,7 @@ export function useConversations(client: Client | null) {
       try {
         const stream = await client.conversations.stream({
           onValue: (conversation) => {
-            console.log("[hollachat] New conversation streamed:", conversation.id);
+            console.log("[clam-chat] New conversation streamed:", conversation.id);
             // Add to the appropriate list based on consent
             const addToList = async () => {
               const consent = await conversation.consentState();
@@ -74,12 +74,12 @@ export function useConversations(client: Client | null) {
             addToList();
           },
           onError: (error) => {
-            console.error("[hollachat] Conversation stream error:", error);
+            console.error("[clam-chat] Conversation stream error:", error);
           },
         });
         streamRef.current = stream;
       } catch (err) {
-        console.error("[hollachat] Failed to start conversation stream:", err);
+        console.error("[clam-chat] Failed to start conversation stream:", err);
       }
     };
 

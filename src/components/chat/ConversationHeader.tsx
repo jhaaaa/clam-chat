@@ -58,7 +58,7 @@ export default function ConversationHeader({
         const consent = await conversation.consentState();
         if (!cancelled) setConsentState(consent);
       } catch (err) {
-        console.error("[hollachat] Error loading conversation header:", err);
+        console.error("[clam-chat] Error loading conversation header:", err);
       }
     };
 
@@ -74,7 +74,7 @@ export default function ConversationHeader({
       setShowMenu(false);
       onConsentChanged();
     } catch (err) {
-      console.error("[hollachat] Failed to block:", err);
+      console.error("[clam-chat] Failed to block:", err);
     } finally {
       setIsUpdating(false);
     }
@@ -88,7 +88,7 @@ export default function ConversationHeader({
       setShowMenu(false);
       onConsentChanged();
     } catch (err) {
-      console.error("[hollachat] Failed to unblock:", err);
+      console.error("[clam-chat] Failed to unblock:", err);
     } finally {
       setIsUpdating(false);
     }

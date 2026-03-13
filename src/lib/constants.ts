@@ -9,6 +9,6 @@ export const DEFAULT_NETWORK: XmtpNetwork =
   process.env.NODE_ENV === "production" ? "production" : "dev";
 
 export const LOCAL_STORAGE_KEYS = {
-  privateKey: "hollachat-private-key",
-  network: "hollachat-network",
+  privateKey: "clam-chat-private-key",
+  network: "clam-chat-network",
 } as const;

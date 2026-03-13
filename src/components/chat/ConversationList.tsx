@@ -92,7 +92,8 @@ export default function ConversationList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by group name or message text"
-          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-700 placeholder-gray-400 outline-none transition-colors focus:border-indigo-300 focus:bg-white focus:ring-1 focus:ring-indigo-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-900"
+          autoComplete="off"
+          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-base text-gray-700 placeholder-gray-400 outline-none transition-colors focus:border-indigo-300 focus:bg-white focus:ring-1 focus:ring-indigo-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-900"
         />
       </div>
 

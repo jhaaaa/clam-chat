@@ -20,7 +20,7 @@ export default function ConsentBanner({
       await conversation.updateConsentState(ConsentState.Allowed);
       onAccepted();
     } catch (err) {
-      console.error("[hollachat] Failed to accept conversation:", err);
+      console.error("[clam-chat] Failed to accept conversation:", err);
     } finally {
       setIsUpdating(false);
     }
@@ -32,7 +32,7 @@ export default function ConsentBanner({
       await conversation.updateConsentState(ConsentState.Denied);
       onBlocked();
     } catch (err) {
-      console.error("[hollachat] Failed to block conversation:", err);
+      console.error("[clam-chat] Failed to block conversation:", err);
     } finally {
       setIsUpdating(false);
     }

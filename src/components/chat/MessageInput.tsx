@@ -22,6 +22,7 @@ function getPreviewText(message: DecodedMessage): string {
 export default function MessageInput({ onSend, onSendAttachment, disabled, replyingTo, onCancelReply }: MessageInputProps) {
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +41,7 @@ export default function MessageInput({ onSend, onSendAttachment, disabled, reply
   const handleSend = async () => {
     if (!text.trim() || isSending || disabled) return;
     setIsSending(true);
+    setSendError("");
     try {
       await onSend(text);
       setText("");
@@ -47,8 +49,8 @@ export default function MessageInput({ onSend, onSendAttachment, disabled, reply
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
-    } catch {
-      // Error is logged in the hook
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Failed to send");
     } finally {
       setIsSending(false);
     }
@@ -85,6 +87,11 @@ export default function MessageInput({ onSend, onSendAttachment, disabled, reply
 
   return (
     <div className="border-t border-gray-200 dark:border-gray-700">
+      {sendError && (
+        <div className="px-4 py-2 text-sm text-red-600">
+          {sendError}
+        </div>
+      )}
       {/* Reply preview bar */}
       {replyingTo && (
         <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-800">
@@ -133,7 +140,7 @@ export default function MessageInput({ onSend, onSendAttachment, disabled, reply
           placeholder="Type a message..."
           disabled={disabled || isSending}
           rows={1}
-          className="flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+          className="flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
         />
         <button
           onClick={handleSend}

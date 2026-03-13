@@ -211,17 +211,17 @@ export default function MessageBubble({
         >
           <button
             onClick={(e) => { e.stopPropagation(); setShowActions(false); onReply(message); }}
-            className="rounded-full border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
+            className="rounded-full border border-gray-200 bg-white px-2 py-1 text-sm text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
             title="Reply"
           >
             ↩
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setShowPicker(!showPicker); }}
-            className="rounded-full border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
+            className="rounded-full border border-gray-200 bg-white px-2 py-1 text-sm text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
             title="React"
           >
-            +
+            ☺
           </button>
         </div>
 

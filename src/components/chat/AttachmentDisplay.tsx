@@ -106,7 +106,7 @@ function RemoteAttachmentContent({
       );
       setAttachment(decrypted);
     } catch (err) {
-      console.error("[hollachat] Failed to download attachment:", err);
+      console.error("[clam-chat] Failed to download attachment:", err);
       setError("Failed to load attachment");
     } finally {
       setLoading(false);
