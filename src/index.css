@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+.btn-rainbow {
+  position: relative;
+  padding: 0.625rem 1.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background: linear-gradient(
+    135deg,
+    #8ab4f8 0%,
+    #a78bfa 18%,
+    #c084fc 36%,
+    #7dd3fc 54%,
+    #67e8f9 72%,
+    #86efac 90%
+  );
+  background-size: 250% 250%;
+  animation: shimmer 4s ease-in-out infinite;
+  transition: all 0.3s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 1px 4px rgba(120, 160, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.btn-rainbow:hover {
+  background-size: 300% 300%;
+  box-shadow:
+    0 4px 16px rgba(120, 160, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  filter: brightness(1.08);
+}
+
+.btn-rainbow:active {
+  transform: scale(0.98);
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
