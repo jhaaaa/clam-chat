@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Conversation } from "@xmtp/browser-sdk";
 import { useXmtp } from "@/components/providers/XmtpProvider";
 import { useChatStore } from "@/store/chatStore";
@@ -17,19 +17,14 @@ export default function ConversationList() {
     useConversations(client);
   const [activeTab, setActiveTab] = useState<Tab>("inbox");
 
-  // Auto-switch to inbox if selected conversation moved there
-  const selectedInInbox =
-    selectedConversation &&
-    conversations.some((c) => c.id === selectedConversation.id);
-  const selectedInRequests =
-    selectedConversation &&
-    requests.some((c) => c.id === selectedConversation.id);
-
-  if (selectedInInbox && activeTab === "requests") {
-    setActiveTab("inbox");
-  } else if (selectedInRequests && activeTab === "inbox") {
-    setActiveTab("requests");
-  }
+  // Auto-switch tab when a conversation's consent state changes (e.g. accepted from requests)
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const inInbox = conversations.some((c) => c.id === selectedConversation.id);
+    const inRequests = requests.some((c) => c.id === selectedConversation.id);
+    if (inInbox && !inRequests) setActiveTab("inbox");
+    else if (inRequests && !inInbox) setActiveTab("requests");
+  }, [selectedConversation, conversations, requests]);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [search, setSearch] = useState("");
