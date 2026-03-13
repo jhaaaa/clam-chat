@@ -85,30 +85,27 @@ export default function NewConversationDialog({
       } catch (err) {
         const msg = err instanceof Error ? err.message : "";
         if (msg.includes("synced") && msg.includes("succeeded")) {
-          console.log("[clam-chat] DM sync info:", msg);
-          // DM was created but sync noise lost the reference — recover it
-          try {
-            await client.conversations.syncAll();
-            dm = await client.conversations.createDmWithIdentifier(identifier);
-          } catch (retryErr) {
-            const retryMsg = retryErr instanceof Error ? retryErr.message : "";
-            if (retryMsg.includes("synced") && retryMsg.includes("succeeded")) {
-              console.log("[clam-chat] DM retry sync info:", retryMsg);
-            }
-            // dm may still be undefined — fall through to onClose()
-          }
-        } else {
-          throw err;
+          console.log("[clam-chat] DM created (sync noise):", msg);
+          onClose();
+          return;
         }
+        throw err;
       }
 
-      if (dm) {
-        onCreated(dm);
-      } else {
-        // DM was created on the network but we couldn't get a local reference.
-        // Close dialog — the conversation list will pick it up on refresh.
-        onClose();
+      // Verify the DM is active (it won't be if a previous installation
+      // already had a DM with this person and was revoked)
+      const active = await dm.isActive();
+      if (!active) {
+        setError(
+          "This conversation is inactive due to a previous session. " +
+          "The other person needs to send you a message to reactivate it."
+        );
+        setIsCreating(false);
+        setStatus("");
+        return;
       }
+
+      onCreated(dm);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to create conversation";

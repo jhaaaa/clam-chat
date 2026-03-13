@@ -15,6 +15,8 @@ export default function ChatLayout() {
   const { address, authMethod, selectedConversation, setSelectedConversation } = useChatStore();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [copiedItem, setCopiedItem] = useState<"key" | "address" | null>(null);
+  const [isPruning, setIsPruning] = useState(false);
+  const [pruneResult, setPruneResult] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Redirect to landing if not connected
@@ -167,6 +169,47 @@ export default function ChatLayout() {
               >
                 Sign out
               </button>
+
+              {/* Danger zone */}
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50/50 p-3 dark:border-red-900 dark:bg-red-950/30">
+                <p className="text-xs font-medium text-red-700 dark:text-red-400">Danger zone</p>
+                <p className="mt-1 text-xs text-red-600/80 dark:text-red-400/70">
+                  Removes all other sessions and devices linked to your XMTP identity.
+                  You'll need to sign out and sign back in afterward.
+                  Old conversations will no longer be accessible.
+                </p>
+                <button
+                  onClick={async () => {
+                    if (!client || isPruning) return;
+                    setIsPruning(true);
+                    setPruneResult(null);
+                    try {
+                      const state = await client.preferences.fetchInboxState();
+                      const count = state.installations.length;
+                      if (count <= 1) {
+                        setPruneResult("Already clean (1 installation)");
+                      } else {
+                        await client.revokeAllOtherInstallations();
+                        setPruneResult(`Done — revoked ${count - 1} old session${count - 1 > 1 ? "s" : ""}. Sign out and sign back in.`);
+                      }
+                    } catch (err) {
+                      setPruneResult(err instanceof Error ? err.message : "Failed");
+                      console.error("[clam-chat] Failed to clean installations:", err);
+                    } finally {
+                      setIsPruning(false);
+                    }
+                  }}
+                  disabled={isPruning}
+                  className="mt-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
+                >
+                  {isPruning ? "Cleaning..." : "Reset identity"}
+                </button>
+                {pruneResult && (
+                  <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                    {pruneResult}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>

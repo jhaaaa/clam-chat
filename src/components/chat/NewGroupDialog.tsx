@@ -114,31 +114,19 @@ export default function NewGroupDialog({
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
         if (message.includes("synced") && message.includes("succeeded")) {
-          console.log("[clam-chat] Group creation sync info:", message);
-          // Group was created but sync noise lost the reference — recover it
-          try {
-            await client.conversations.syncAll();
-            group = await client.conversations.createGroupWithIdentifiers(
-              identifiers,
-              { groupName: groupName.trim() }
-            );
-          } catch (retryErr) {
-            const retryMsg = retryErr instanceof Error ? retryErr.message : "";
-            if (retryMsg.includes("synced") && retryMsg.includes("succeeded")) {
-              console.log("[clam-chat] Group retry sync info:", retryMsg);
-            }
-          }
-        } else {
-          throw err;
+          console.log("[clam-chat] Group created (sync noise):", message);
+          onClose();
+          return;
         }
+        throw err;
       }
 
-      if (group) {
+      if (await group.isActive()) {
         onCreated(group);
       } else {
-        // Group was created on the network but we couldn't get a local reference.
-        // Close dialog — the conversation list will pick it up on refresh.
-        onClose();
+        setError("Group was created but is inactive. Try refreshing the page.");
+        setIsCreating(false);
+        setStatus("");
       }
     } catch (err) {
       const message =

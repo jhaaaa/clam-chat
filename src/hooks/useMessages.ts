@@ -9,17 +9,30 @@ import {
   type RemoteAttachment,
 } from "@xmtp/browser-sdk";
 
+// XMTP SDK sometimes throws sync status messages as errors even on success.
+function isSyncNoise(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : "";
+  return msg.includes("synced") && msg.includes("succeeded");
+}
+
 export function useMessages(conversation: Conversation | null) {
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const streamRef = useRef<{ end: () => void } | null>(null);
   const conversationIdRef = useRef<string | null>(null);
 
+  // Sync + load messages. If sync fails, still try loading cached messages.
   const loadMessages = useCallback(async () => {
     if (!conversation) return;
     setIsLoading(true);
     try {
       await conversation.sync();
+    } catch (err) {
+      if (!isSyncNoise(err)) {
+        console.warn("[clam-chat] Sync failed:", err);
+      }
+    }
+    try {
       const msgs = await conversation.messages();
       setMessages(msgs);
     } catch (err) {
@@ -47,10 +60,14 @@ export function useMessages(conversation: Conversation | null) {
     // Load history
     loadMessages();
 
-    // Re-load messages without showing loading spinner (for reactions, etc.)
+    // Re-load messages without spinner (for reactions, stream catch-up, etc.)
     const reloadMessages = async () => {
       try {
         await conversation.sync();
+      } catch {
+        // Sync failed — still try loading cached messages
+      }
+      try {
         const msgs = await conversation.messages();
         setMessages(msgs);
       } catch (err) {
@@ -63,9 +80,6 @@ export function useMessages(conversation: Conversation | null) {
       try {
         const stream = await conversation.stream({
           onValue: (message: DecodedMessage) => {
-            // Reactions and replies arrive as separate messages in the stream
-            // but should be grouped under their parent message. Re-sync to
-            // get the properly grouped data.
             const typeId = message.contentType?.typeId;
             if (typeId === "reaction" || typeId === "reply") {
               reloadMessages();
@@ -73,7 +87,6 @@ export function useMessages(conversation: Conversation | null) {
             }
 
             setMessages((prev) => {
-              // Avoid duplicates
               if (prev.some((m) => m.id === message.id)) return prev;
               return [...prev, message];
             });
@@ -97,33 +110,38 @@ export function useMessages(conversation: Conversation | null) {
     };
   }, [conversation, loadMessages]);
 
+  // Refresh messages after a send operation
+  const refreshAfterSend = useCallback(async () => {
+    if (!conversation) return;
+    try {
+      await conversation.sync();
+    } catch {
+      // Best-effort sync
+    }
+    try {
+      const msgs = await conversation.messages();
+      setMessages(msgs);
+    } catch {
+      // Best-effort refresh
+    }
+  }, [conversation]);
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (!conversation || !text.trim()) return;
       try {
-        // Sync before sending to ensure conversation is active (fixes "Group is inactive")
-        await conversation.sync();
         await conversation.sendText(text.trim());
       } catch (err) {
-        // XMTP SDK sync noise — not a real error
-        const msg = err instanceof Error ? err.message : "";
-        if (msg.includes("synced") && msg.includes("succeeded")) {
-          console.log("[clam-chat] Send sync info:", msg);
+        if (isSyncNoise(err)) {
+          console.log("[clam-chat] Send noise:", (err as Error).message);
         } else {
           console.error("[clam-chat] Failed to send message:", err);
           throw err;
         }
       }
-      // Refresh messages in case the stream didn't pick it up
-      try {
-        await conversation.sync();
-        const msgs = await conversation.messages();
-        setMessages(msgs);
-      } catch {
-        // Best-effort refresh
-      }
+      await refreshAfterSend();
     },
-    [conversation]
+    [conversation, refreshAfterSend]
   );
 
   const sendReaction = useCallback(
@@ -139,7 +157,9 @@ export function useMessages(conversation: Conversation | null) {
           schema: ReactionSchema.Unicode,
         });
       } catch (err) {
-        console.error("[clam-chat] Failed to send reaction:", err);
+        if (!isSyncNoise(err)) {
+          console.error("[clam-chat] Failed to send reaction:", err);
+        }
       }
     },
     [conversation]
@@ -149,7 +169,6 @@ export function useMessages(conversation: Conversation | null) {
     async (referenceId: string, referenceInboxId: string, text: string) => {
       if (!conversation || !text.trim()) return;
       try {
-        await conversation.sync();
         const encoded = await encodeText(text.trim());
         await conversation.sendReply({
           reference: referenceId,
@@ -157,23 +176,16 @@ export function useMessages(conversation: Conversation | null) {
           content: encoded,
         });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "";
-        if (msg.includes("synced") && msg.includes("succeeded")) {
-          console.log("[clam-chat] Reply sync info:", msg);
+        if (isSyncNoise(err)) {
+          console.log("[clam-chat] Reply noise:", (err as Error).message);
         } else {
           console.error("[clam-chat] Failed to send reply:", err);
           throw err;
         }
       }
-      try {
-        await conversation.sync();
-        const msgs = await conversation.messages();
-        setMessages(msgs);
-      } catch {
-        // Best-effort refresh
-      }
+      await refreshAfterSend();
     },
-    [conversation]
+    [conversation, refreshAfterSend]
   );
 
   const sendInlineAttachment = useCallback(
@@ -182,11 +194,14 @@ export function useMessages(conversation: Conversation | null) {
       try {
         await conversation.sendAttachment(attachment);
       } catch (err) {
-        console.error("[clam-chat] Failed to send attachment:", err);
-        throw err;
+        if (!isSyncNoise(err)) {
+          console.error("[clam-chat] Failed to send attachment:", err);
+          throw err;
+        }
       }
+      await refreshAfterSend();
     },
-    [conversation]
+    [conversation, refreshAfterSend]
   );
 
   const sendRemoteAttachmentMsg = useCallback(
@@ -195,11 +210,14 @@ export function useMessages(conversation: Conversation | null) {
       try {
         await conversation.sendRemoteAttachment(remoteAttachment);
       } catch (err) {
-        console.error("[clam-chat] Failed to send remote attachment:", err);
-        throw err;
+        if (!isSyncNoise(err)) {
+          console.error("[clam-chat] Failed to send remote attachment:", err);
+          throw err;
+        }
       }
+      await refreshAfterSend();
     },
-    [conversation]
+    [conversation, refreshAfterSend]
   );
 
   return {

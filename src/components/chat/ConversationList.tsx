@@ -135,7 +135,7 @@ export default function ConversationList() {
       {/* New conversation dialog */}
       {showNewConversation && (
         <NewConversationDialog
-          onClose={() => setShowNewConversation(false)}
+          onClose={() => { setShowNewConversation(false); refresh(); }}
           onCreated={handleNewConversationCreated}
         />
       )}
@@ -143,7 +143,7 @@ export default function ConversationList() {
       {/* New group dialog */}
       {showNewGroup && (
         <NewGroupDialog
-          onClose={() => setShowNewGroup(false)}
+          onClose={() => { setShowNewGroup(false); refresh(); }}
           onCreated={(group) => {
             setSelectedConversation(group);
             setShowNewGroup(false);

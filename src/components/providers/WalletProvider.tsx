@@ -12,7 +12,7 @@ const config = createConfig({
   ],
   chains: [mainnet, sepolia],
   transports: {
-    [mainnet.id]: http("https://eth.llamarpc.com"),
+    [mainnet.id]: http("https://cloudflare-eth.com"),
     [sepolia.id]: http("https://rpc.ankr.com/eth_sepolia"),
   },
 });
