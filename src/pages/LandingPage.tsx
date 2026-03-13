@@ -97,7 +97,7 @@ export default function LandingPage() {
           <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-8 dark:border-gray-700 dark:bg-gray-800">
             <LoadingSpinner size="lg" label="Signing you in..." />
             <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              You may be asked to sign a message to create your XMTP identity.
+              Your wallet may ask you to sign a message. This authorizes this browser to send and receive messages on your behalf. It does not cost gas or move any funds.
             </p>
           </div>
         )}

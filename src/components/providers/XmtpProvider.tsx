@@ -83,9 +83,9 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
         throw new Error("Unknown auth method");
       }
 
-      console.log("[hollachat] Creating XMTP client...");
+      console.log("[clam-chat] Creating XMTP client...");
       const xmtpClient = await createXmtpClient(signer, network);
-      console.log("[hollachat] XMTP client created, inboxId:", xmtpClient.inboxId);
+      console.log("[clam-chat] XMTP client created, inboxId:", xmtpClient.inboxId);
       // Don't update state if user disconnected while we were connecting
       if (!disconnectedRef.current) {
         setClient(xmtpClient);
@@ -96,7 +96,7 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
         const message =
           err instanceof Error ? err.message : "Failed to connect to XMTP";
         setClientError(message);
-        console.error("[hollachat] XMTP connection error:", err);
+        console.error("[clam-chat] XMTP connection error:", err);
       }
     } finally {
       if (!disconnectedRef.current) {
@@ -140,16 +140,16 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
     // For wallet auth, wait until walletClient is done loading and available
     if (authMethod === "wallet") {
       if (isWalletClientLoading) {
-        console.log("[hollachat] Waiting for wallet client to load...");
+        console.log("[clam-chat] Waiting for wallet client to load...");
         return;
       }
       if (!walletClient) {
-        console.log("[hollachat] Wallet client not available yet");
+        console.log("[clam-chat] Wallet client not available yet");
         return;
       }
     }
 
-    console.log("[hollachat] Auto-connecting with method:", authMethod);
+    console.log("[clam-chat] Auto-connecting with method:", authMethod);
     connect();
   }, [
     authMethod,
