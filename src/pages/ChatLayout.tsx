@@ -63,7 +63,10 @@ export default function ChatLayout() {
       <MultiTabWarning />
       {/* Header */}
       <header className="flex items-center justify-between border-b border-gray-200 px-2 py-2 md:px-4 md:py-3 dark:border-gray-700">
-        <h1 className="text-base font-bold md:text-lg">Clam Chat</h1>
+        <h1 className="flex items-center gap-1.5 text-base font-bold md:text-lg">
+          <img src="/clam.svg" alt="" className="h-6 w-6" />
+          Clam Chat
+        </h1>
         <div className="relative flex items-center gap-3" ref={menuRef}>
           <button
             onClick={() => setShowAccountMenu(!showAccountMenu)}

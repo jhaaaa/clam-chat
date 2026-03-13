@@ -82,6 +82,7 @@ export default function ChatPage() {
     return (
       <div className="flex flex-1 items-center justify-center text-gray-400">
         <div className="text-center">
+          <img src="/clam.svg" alt="" className="mx-auto mb-3 h-12 w-12 opacity-40" />
           <p className="text-lg">Welcome to Clam Chat</p>
           <p className="mt-2 text-sm">
             Select a conversation or start a new one.

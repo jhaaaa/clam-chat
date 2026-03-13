@@ -84,6 +84,7 @@ export default function LandingPage() {
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
+          <img src="/clam.svg" alt="" className="mx-auto h-16 w-16" />
           <h1 className="text-4xl font-bold tracking-tight">Clam Chat</h1>
           <p className="mt-2 text-gray-500 dark:text-gray-400">
             Encrypted messaging powered by XMTP

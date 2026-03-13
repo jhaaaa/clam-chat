@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8ab4f8" />
+      <stop offset="18%" stop-color="#a78bfa" />
+      <stop offset="36%" stop-color="#c084fc" />
+      <stop offset="54%" stop-color="#7dd3fc" />
+      <stop offset="72%" stop-color="#67e8f9" />
+      <stop offset="90%" stop-color="#86efac" />
+    </linearGradient>
+  </defs>
+  <!-- Clam shell outline shape, tilted like the reference image -->
+  <g transform="translate(32,34) rotate(-15) translate(-32,-34)">
+    <!-- Outer shell shape -->
+    <path d="M12 36 Q10 22 20 14 Q30 8 42 12 Q54 18 56 34 Q56 42 50 48 Q40 56 26 54 Q14 50 12 36 Z"
+      fill="url(#rainbow)" stroke="url(#rainbow)" stroke-width="0.5" />
+    <!-- Ridge lines -->
+    <path d="M18 18 Q28 30 24 50" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+    <path d="M30 11 Q34 30 30 54" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+    <path d="M44 16 Q42 32 38 52" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+    <!-- Bottom edge / opening line -->
+    <path d="M14 40 Q20 50 32 52 Q44 50 52 42" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5" />
+  </g>
+</svg>
