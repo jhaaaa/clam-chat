@@ -23,7 +23,7 @@ const connectors = connectorsForWallets(
     },
   ],
   {
-    appName: "hollachat",
+    appName: "Clam Chat",
     projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "PLACEHOLDER",
   }
 );
@@ -32,8 +32,8 @@ const config = createConfig({
   connectors,
   chains: [mainnet, sepolia],
   transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
+    [mainnet.id]: http("https://eth.llamarpc.com"),
+    [sepolia.id]: http("https://rpc.ankr.com/eth_sepolia"),
   },
 });
 
