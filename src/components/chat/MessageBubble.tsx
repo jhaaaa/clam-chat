@@ -1,4 +1,4 @@
-import { useState, useCallback, useSyncExternalStore } from "react";
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import {
   ReactionAction,
   isReply,
@@ -111,6 +111,24 @@ export default function MessageBubble({
   onScrollToMessage,
 }: MessageBubbleProps) {
   const [showPicker, setShowPicker] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+
+  // Dismiss actions when tapping outside the bubble
+  useEffect(() => {
+    if (!showActions) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (bubbleRef.current && !bubbleRef.current.contains(e.target as Node)) {
+        setShowActions(false);
+      }
+    };
+    document.addEventListener("touchstart", handler);
+    document.addEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("touchstart", handler);
+      document.removeEventListener("mousedown", handler);
+    };
+  }, [showActions]);
 
   const getAddress = useCallback(
     async () => senderAddress,
@@ -180,22 +198,26 @@ export default function MessageBubble({
 
   return (
     <div className={`group flex ${isSelf ? "justify-end" : "justify-start"}`}>
-      <div className="relative max-w-[75%]">
-        {/* Action buttons — show on hover */}
+      <div
+        ref={bubbleRef}
+        className="relative max-w-[75%]"
+        onClick={() => setShowActions((prev) => !prev)}
+      >
+        {/* Action buttons — show on hover (desktop) or tap (mobile) */}
         <div
-          className={`absolute top-0 hidden items-center gap-0.5 group-hover:flex ${
-            isSelf ? "-left-16" : "-right-16"
-          }`}
+          className={`absolute top-0 items-center gap-0.5 ${
+            showActions ? "flex" : "hidden group-hover:flex"
+          } ${isSelf ? "-left-16" : "-right-16"}`}
         >
           <button
-            onClick={() => onReply(message)}
+            onClick={(e) => { e.stopPropagation(); setShowActions(false); onReply(message); }}
             className="rounded-full border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
             title="Reply"
           >
             ↩
           </button>
           <button
-            onClick={() => setShowPicker(!showPicker)}
+            onClick={(e) => { e.stopPropagation(); setShowPicker(!showPicker); }}
             className="rounded-full border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
             title="React"
           >
@@ -211,8 +233,8 @@ export default function MessageBubble({
             }`}
           >
             <ReactionPicker
-              onSelect={(emoji) => onReact(message.id, message.senderInboxId, emoji, "add")}
-              onClose={() => setShowPicker(false)}
+              onSelect={(emoji) => { onReact(message.id, message.senderInboxId, emoji, "add"); setShowActions(false); }}
+              onClose={() => { setShowPicker(false); setShowActions(false); }}
             />
           </div>
         )}
@@ -239,7 +261,7 @@ export default function MessageBubble({
           {/* Quoted parent message for replies */}
           {quotedText && (
             <button
-              onClick={() => quotedMessageId && onScrollToMessage?.(quotedMessageId)}
+              onClick={(e) => { e.stopPropagation(); quotedMessageId && onScrollToMessage?.(quotedMessageId); }}
               className={`mb-1.5 w-full rounded-lg border-l-2 px-2 py-1 text-left text-xs ${
                 isSelf
                   ? "border-gray-300 bg-gray-200/60 text-gray-500 dark:border-gray-600 dark:bg-gray-700/60 dark:text-gray-400"
@@ -279,7 +301,7 @@ export default function MessageBubble({
             {reactions.map(({ emoji, count, selfReacted }) => (
               <button
                 key={emoji}
-                onClick={() => handleReactionClick(emoji, selfReacted)}
+                onClick={(e) => { e.stopPropagation(); handleReactionClick(emoji, selfReacted); }}
                 className={`inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-xs transition-colors ${
                   selfReacted
                     ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-700"
