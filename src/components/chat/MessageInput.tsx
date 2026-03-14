@@ -50,12 +50,7 @@ export default function MessageInput({ onSend, onSendAttachment, disabled, reply
         textareaRef.current.style.height = "auto";
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to send";
-      if (msg.toLowerCase().includes("inactive")) {
-        setSendError("This conversation is from a previous session and can't send new messages. Start a new conversation to continue chatting.");
-      } else {
-        setSendError(msg);
-      }
+      setSendError(err instanceof Error ? err.message : "Failed to send");
     } finally {
       setIsSending(false);
     }
