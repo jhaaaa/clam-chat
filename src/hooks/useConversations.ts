@@ -34,12 +34,17 @@ export function useConversations(client: Client | null) {
   const [requests, setRequests] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const streamRef = useRef<{ end: () => void } | null>(null);
+  const consentStreamRef = useRef<{ end: () => void } | null>(null);
 
   // Sync from network, then list from local DB
   const loadConversations = useCallback(async () => {
     if (!client) return;
     setIsLoading(true);
     try {
+      // Sync consent/preferences from other installations first,
+      // so conversations created elsewhere show up with the right consent state
+      await client.preferences.sync();
+
       // Pull new welcomes + unread messages for allowed and unknown conversations
       await client.conversations.syncAll([
         ConsentState.Allowed,
@@ -108,6 +113,36 @@ export function useConversations(client: Client | null) {
       streamRef.current = null;
     };
   }, [client]);
+
+  // Stream consent updates from other installations (e.g. laptop consented, mobile should know)
+  useEffect(() => {
+    if (!client) return;
+
+    const startConsentStream = async () => {
+      try {
+        const stream = await client.preferences.streamConsent({
+          onValue: () => {
+            // Consent changed on another device — re-list to move conversations
+            // between Allowed/Unknown/Denied buckets
+            loadConversations();
+          },
+          onError: (error) => {
+            console.error("[clam-chat] Consent stream error:", error);
+          },
+        });
+        consentStreamRef.current = stream;
+      } catch (err) {
+        console.error("[clam-chat] Failed to start consent stream:", err);
+      }
+    };
+
+    startConsentStream();
+
+    return () => {
+      consentStreamRef.current?.end();
+      consentStreamRef.current = null;
+    };
+  }, [client, loadConversations]);
 
   // Load on mount and when version changes (consent update, new conversation, etc.)
   useEffect(() => {
