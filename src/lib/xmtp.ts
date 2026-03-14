@@ -2,8 +2,6 @@ import { Client, ConsentState, getInboxIdForIdentifier, type Signer } from "@xmt
 import type { XmtpNetwork } from "./constants";
 import { XMTP_NETWORKS } from "./constants";
 
-const MAX_INSTALLATIONS_BEFORE_CLEANUP = 9;
-
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
     promise,
@@ -27,11 +25,6 @@ export async function createXmtpClient(
     });
     console.log("[clam-chat] Client created successfully");
 
-    // Proactively clean up stale installations in the background.
-    // This requires a wallet signature, so we don't await it — otherwise
-    // WalletConnect users would get a second sign prompt immediately.
-    pruneInstallationsIfNeeded(client);
-
     console.log("[clam-chat] Syncing conversations...");
     await withTimeout(
       client.conversations.syncAll([ConsentState.Allowed, ConsentState.Unknown]),
@@ -41,9 +34,11 @@ export async function createXmtpClient(
     console.log("[clam-chat] Sync complete");
     return client;
   } catch (err) {
-    // If we somehow still hit 10/10, use static revocation and retry
+    // If we hit 10/10 installations, revoke all old ones and retry.
+    // This only happens if the user has signed in on 10+ different
+    // browsers/devices — very rare in practice.
     if (err instanceof Error && err.message.includes("10/10 installations")) {
-      console.log("[clam-chat] Hit installation limit, revoking all installations...");
+      console.warn("[clam-chat] Hit installation limit, revoking all old installations...");
       await revokeAllInstallations(signer, env);
       const client = await Client.create(signer, {
         env,
@@ -53,21 +48,6 @@ export async function createXmtpClient(
       return client;
     }
     throw err;
-  }
-}
-
-async function pruneInstallationsIfNeeded(client: Client): Promise<void> {
-  try {
-    const inboxState = await client.preferences.fetchInboxState();
-    const count = inboxState.installations.length;
-    if (count >= MAX_INSTALLATIONS_BEFORE_CLEANUP) {
-      console.log(`[clam-chat] ${count} installations found, revoking stale ones...`);
-      await client.revokeAllOtherInstallations();
-      console.log("[clam-chat] Stale installations revoked");
-    }
-  } catch (err) {
-    // Don't block login if cleanup fails
-    console.warn("[clam-chat] Failed to prune installations:", err);
   }
 }
 
