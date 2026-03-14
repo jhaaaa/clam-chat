@@ -88,9 +88,8 @@ export default function ConversationItem({
         console.error("[clam-chat] Error loading conversation label:", err);
       }
 
-      // Load last message preview — sync first so second devices see latest
+      // Load last message preview — uses locally cached messages (synced by syncAll)
       try {
-        try { await conversation.sync(); } catch { /* best-effort */ }
         const recentMessages = await conversation.messages({ limit: 20n });
         if (!cancelled && recentMessages.length > 0) {
           // Find the most recent displayable message (skip reactions)
