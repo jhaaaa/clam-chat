@@ -12,6 +12,20 @@ function isConversation(c: unknown): c is Conversation {
   return c instanceof Dm || c instanceof Group;
 }
 
+// Filter out inactive conversations (from revoked installations / identity resets)
+async function filterActive(convos: Conversation[]): Promise<Conversation[]> {
+  const results = await Promise.all(
+    convos.map(async (c) => {
+      try {
+        return await c.isActive();
+      } catch {
+        return false;
+      }
+    })
+  );
+  return convos.filter((_, i) => results[i]);
+}
+
 export function useConversations(client: Client | null) {
   const conversationListVersion = useChatStore(
     (s) => s.conversationListVersion
@@ -35,12 +49,14 @@ export function useConversations(client: Client | null) {
       const allowed = await client.conversations.list({
         consentStates: [ConsentState.Allowed],
       });
-      setConversations(allowed.filter(isConversation));
+      const activeAllowed = await filterActive(allowed.filter(isConversation));
+      setConversations(activeAllowed);
 
       const unknown = await client.conversations.list({
         consentStates: [ConsentState.Unknown],
       });
-      setRequests(unknown.filter(isConversation));
+      const activeUnknown = await filterActive(unknown.filter(isConversation));
+      setRequests(activeUnknown);
     } catch (err) {
       console.error("[clam-chat] Failed to load conversations:", err);
     } finally {
@@ -57,6 +73,11 @@ export function useConversations(client: Client | null) {
         const stream = await client.conversations.stream({
           onValue: async (conversation) => {
             if (!isConversation(conversation)) return;
+            // Skip inactive conversations (from revoked installations)
+            try {
+              const active = await conversation.isActive();
+              if (!active) return;
+            } catch { return; }
             const consent = await conversation.consentState();
             if (consent === ConsentState.Allowed) {
               setConversations((prev) => {

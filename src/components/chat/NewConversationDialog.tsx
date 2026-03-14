@@ -92,6 +92,18 @@ export default function NewConversationDialog({
         throw err;
       }
 
+      // Check if the returned DM is actually usable (not from a revoked installation)
+      const active = await dm.isActive();
+      if (!active) {
+        setError(
+          "This conversation is from a previous session and can't be reused. " +
+          "The other person needs to message you first to start a new conversation."
+        );
+        setIsCreating(false);
+        setStatus("");
+        return;
+      }
+
       // Explicitly consent — you created this conversation, it shouldn't be a "request"
       await dm.updateConsentState(ConsentState.Allowed);
 
