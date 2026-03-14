@@ -41,15 +41,16 @@ export function useConversations(client: Client | null) {
     if (!client) return;
     setIsLoading(true);
     try {
-      // Sync consent/preferences from other installations first,
-      // so conversations created elsewhere show up with the right consent state
-      await client.preferences.sync();
-
       // Pull new welcomes + unread messages for allowed and unknown conversations
       await client.conversations.syncAll([
         ConsentState.Allowed,
         ConsentState.Unknown,
       ]);
+
+      // Sync consent/preferences from other installations AFTER syncAll,
+      // so that consent states set on other devices override the default
+      // "Unknown" that welcome processing assigns to new conversations
+      await client.preferences.sync();
 
       const allowed = await client.conversations.list({
         consentStates: [ConsentState.Allowed],
