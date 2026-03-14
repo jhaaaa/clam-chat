@@ -3,6 +3,7 @@ import {
   ConsentState,
   Dm,
   Group,
+  IdentifierKind,
   type Conversation,
   type Client,
 } from "@xmtp/browser-sdk";
@@ -32,17 +33,61 @@ export function useConversations(client: Client | null) {
       const allowed = await client.conversations.list({
         consentStates: [ConsentState.Allowed],
       });
-      // Filter to DMs and Groups (skip internal Sync/Oneshot types)
-      setConversations(
-        allowed.filter((c) => c instanceof Dm || c instanceof Group)
+      const filteredAllowed = allowed.filter(
+        (c) => c instanceof Dm || c instanceof Group
       );
 
       const unknown = await client.conversations.list({
         consentStates: [ConsentState.Unknown],
       });
-      setRequests(
-        unknown.filter((c) => c instanceof Dm || c instanceof Group)
+      const filteredUnknown = unknown.filter(
+        (c) => c instanceof Dm || c instanceof Group
       );
+
+      // Reactivate inactive DMs by creating duplicate DMs (triggers stitching).
+      // Per XMTP docs: "you may choose to programmatically create a duplicate DM
+      // for every inactive DM to trigger stitching. This will activate the DM conversations."
+      let reactivated = false;
+      const allConvs = [...filteredAllowed, ...filteredUnknown];
+      for (const conv of allConvs) {
+        if (!(conv instanceof Dm)) continue;
+        try {
+          if (await conv.isActive()) continue;
+          const peerInboxId = await (conv as Dm).peerInboxId();
+          const members = await conv.members();
+          const peer = members.find((m) => m.inboxId === peerInboxId);
+          const peerAddress = peer?.accountIdentifiers?.[0]?.identifier;
+          if (peerAddress) {
+            console.log("[clam-chat] Reactivating inactive DM with", peerAddress);
+            await client.conversations.createDmWithIdentifier({
+              identifier: peerAddress,
+              identifierKind: IdentifierKind.Ethereum,
+            });
+            reactivated = true;
+          }
+        } catch (err) {
+          console.warn("[clam-chat] Failed to reactivate DM:", err);
+        }
+      }
+
+      // If we reactivated any DMs, re-list to get updated state
+      if (reactivated) {
+        const refreshed = await client.conversations.list({
+          consentStates: [ConsentState.Allowed],
+        });
+        setConversations(
+          refreshed.filter((c) => c instanceof Dm || c instanceof Group)
+        );
+        const refreshedUnknown = await client.conversations.list({
+          consentStates: [ConsentState.Unknown],
+        });
+        setRequests(
+          refreshedUnknown.filter((c) => c instanceof Dm || c instanceof Group)
+        );
+      } else {
+        setConversations(filteredAllowed);
+        setRequests(filteredUnknown);
+      }
     } catch (err) {
       console.error("[clam-chat] Failed to load conversations:", err);
     } finally {

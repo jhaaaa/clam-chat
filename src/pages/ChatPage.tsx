@@ -18,20 +18,25 @@ export default function ChatPage() {
     sendInlineAttachment, sendRemoteAttachment,
   } = useMessages(selectedConversation);
   const [consentState, setConsentState] = useState<ConsentState | null>(null);
+  const [isActive, setIsActive] = useState(true);
   const [replyingTo, setReplyingTo] = useState<DecodedMessage | null>(null);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [memberAddresses, setMemberAddresses] = useState<Map<string, string>>(new Map());
 
-  // Load consent state and member addresses when conversation changes
+  // Load consent state, active status, and member addresses when conversation changes
   useEffect(() => {
     if (!selectedConversation) {
       setConsentState(null);
+      setIsActive(true);
       setMemberAddresses(new Map());
       return;
     }
     let cancelled = false;
     selectedConversation.consentState().then((state) => {
       if (!cancelled) setConsentState(state);
+    });
+    selectedConversation.isActive().then((active) => {
+      if (!cancelled) setIsActive(active);
     });
     // Build inboxId -> address map from members
     selectedConversation.members().then((members) => {
@@ -134,15 +139,26 @@ export default function ChatPage() {
         selfInboxId={client?.inboxId || ""}
         isLoading={isLoading}
         memberAddresses={memberAddresses}
-        onReact={sendReaction}
-        onReply={setReplyingTo}
+        onReact={isActive ? sendReaction : undefined}
+        onReply={isActive ? setReplyingTo : undefined}
       />
-      <MessageInput
-        onSend={handleSend}
-        onSendAttachment={handleSendAttachment}
-        replyingTo={replyingTo}
-        onCancelReply={() => setReplyingTo(null)}
-      />
+
+      {!isActive ? (
+        <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+            {selectedConversation instanceof Group
+              ? "This group is from a previous session. It will reactivate when other members send messages."
+              : "This conversation is from a previous session and is read-only."}
+          </p>
+        </div>
+      ) : (
+        <MessageInput
+          onSend={handleSend}
+          onSendAttachment={handleSendAttachment}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+        />
+      )}
 
       {showGroupInfo && selectedConversation instanceof Group && (
         <GroupInfoPanel
