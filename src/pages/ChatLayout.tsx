@@ -170,8 +170,8 @@ export default function ChatLayout() {
                 Sign out
               </button>
 
-              {/* Danger zone */}
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50/50 p-3 dark:border-red-900 dark:bg-red-950/30">
+              {/* Danger zone — hidden unless localStorage.setItem('clam-debug', '1') */}
+              {localStorage.getItem("clam-debug") === "1" && <div className="mt-4 rounded-lg border border-red-200 bg-red-50/50 p-3 dark:border-red-900 dark:bg-red-950/30">
                 <p className="text-xs font-medium text-red-700 dark:text-red-400">Danger zone</p>
                 <p className="mt-1 text-xs text-red-600/80 dark:text-red-400/70">
                   Removes all other sessions and devices linked to your XMTP identity.
@@ -209,7 +209,7 @@ export default function ChatLayout() {
                     {pruneResult}
                   </p>
                 )}
-              </div>
+              </div>}
             </div>
           )}
         </div>
