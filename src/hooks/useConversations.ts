@@ -21,9 +21,9 @@ export function useConversations(client: Client | null) {
     if (!client) return;
     setIsLoading(true);
     try {
-      // Sync latest from network
-      await client.conversations.syncAll([ConsentState.Allowed]);
-
+      // No syncAll() here — the initial sync already ran in createXmtpClient(),
+      // and the conversation stream handles real-time updates. Re-syncing on
+      // every refresh caused concurrent WASM/SQLite operations that corrupted state.
       const allowed = await client.conversations.list({
         consentStates: [ConsentState.Allowed],
       });

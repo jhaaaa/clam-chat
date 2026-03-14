@@ -34,7 +34,7 @@ export async function createXmtpClient(
 
     console.log("[clam-chat] Syncing conversations...");
     await withTimeout(
-      client.conversations.syncAll([ConsentState.Allowed]),
+      client.conversations.syncAll([ConsentState.Allowed, ConsentState.Unknown]),
       15_000,
       "Conversation sync timed out"
     );
@@ -49,7 +49,7 @@ export async function createXmtpClient(
         env,
         appVersion: "clam-chat/1.0",
       });
-      await client.conversations.syncAll([ConsentState.Allowed]);
+      await client.conversations.syncAll([ConsentState.Allowed, ConsentState.Unknown]);
       return client;
     }
     throw err;

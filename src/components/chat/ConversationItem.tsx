@@ -140,7 +140,7 @@ export default function ConversationItem({
 
     searchTimerRef.current = setTimeout(async () => {
       try {
-        await conversation.sync();
+        // Search locally cached messages — no sync to avoid N concurrent syncs
         const messages = await conversation.messages({ limit: 100n });
         const query = searchFilter.toLowerCase();
 

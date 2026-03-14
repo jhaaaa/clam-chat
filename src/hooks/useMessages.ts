@@ -71,13 +71,8 @@ export function useMessages(conversation: Conversation | null) {
     // Load history
     loadMessages();
 
-    // Re-load messages without spinner (for reactions, stream catch-up, etc.)
+    // Re-load messages from local DB (no sync — the stream already wrote the data)
     const reloadMessages = async () => {
-      try {
-        await conversation.sync();
-      } catch {
-        // Sync failed — still try loading cached messages
-      }
       try {
         const msgs = await conversation.messages();
         setMessages(msgs);

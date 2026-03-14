@@ -9,6 +9,12 @@ import ChatPage from "@/pages/ChatPage";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import "@/index.css";
 
+// Apply dark mode immediately (before React renders) to prevent flash
+const darkPref = localStorage.getItem("clam-chat-dark-mode");
+if (darkPref === "true" || (darkPref === null && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+  document.documentElement.classList.add("dark");
+}
+
 // One-time migration: hollachat → clam-chat localStorage keys
 for (const [oldKey, newKey] of [
   ["hollachat-dark-mode", "clam-chat-dark-mode"],
