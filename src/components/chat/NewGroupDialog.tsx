@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IdentifierKind, type Conversation, type Identifier } from "@xmtp/browser-sdk";
+import { ConsentState, IdentifierKind, type Conversation, type Identifier } from "@xmtp/browser-sdk";
 import { isAddress } from "viem";
 import { normalize } from "viem/ens";
 import { useXmtp } from "@/components/providers/XmtpProvider";
@@ -120,6 +120,9 @@ export default function NewGroupDialog({
         }
         throw err;
       }
+
+      // Explicitly consent — you created this group, it shouldn't be a "request"
+      await group.updateConsentState(ConsentState.Allowed);
 
       onCreated(group);
     } catch (err) {

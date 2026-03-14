@@ -21,8 +21,7 @@ export function useMessages(conversation: Conversation | null) {
   const streamRef = useRef<{ end: () => void } | null>(null);
   const conversationIdRef = useRef<string | null>(null);
 
-  // Sync + load messages. If sync fails, still try loading cached messages.
-  // On a second device there's no local cache, so retry sync once if empty.
+  // Sync conversation from network, then load messages from local DB
   const loadMessages = useCallback(async () => {
     if (!conversation) return;
     setIsLoading(true);
@@ -34,17 +33,7 @@ export function useMessages(conversation: Conversation | null) {
       }
     }
     try {
-      let msgs = await conversation.messages();
-      // On a fresh device, sync may fail silently and return no messages.
-      // Retry once to give the network a second chance.
-      if (msgs.length === 0) {
-        try {
-          await conversation.sync();
-        } catch {
-          // best-effort retry
-        }
-        msgs = await conversation.messages();
-      }
+      const msgs = await conversation.messages();
       setMessages(msgs);
     } catch (err) {
       console.error("[clam-chat] Failed to load messages:", err);
@@ -53,25 +42,23 @@ export function useMessages(conversation: Conversation | null) {
     }
   }, [conversation]);
 
-  // Load messages and start streaming when conversation changes
+  // When conversation changes: load history, start streaming
   useEffect(() => {
     if (!conversation) {
       setMessages([]);
       return;
     }
 
-    // Skip if same conversation
     if (conversationIdRef.current === conversation.id) return;
     conversationIdRef.current = conversation.id;
 
-    // Clean up previous stream
     streamRef.current?.end();
     streamRef.current = null;
 
-    // Load history
     loadMessages();
 
-    // Re-load messages from local DB (no sync — the stream already wrote the data)
+    // Reload messages from local DB without network sync
+    // (the stream already wrote the data to the local DB)
     const reloadMessages = async () => {
       try {
         const msgs = await conversation.messages();
@@ -81,17 +68,16 @@ export function useMessages(conversation: Conversation | null) {
       }
     };
 
-    // Start streaming new messages
     const startStream = async () => {
       try {
         const stream = await conversation.stream({
           onValue: (message: DecodedMessage) => {
             const typeId = message.contentType?.typeId;
+            // Reactions and replies need a full reload for enriched data
             if (typeId === "reaction" || typeId === "reply") {
               reloadMessages();
               return;
             }
-
             setMessages((prev) => {
               if (prev.some((m) => m.id === message.id)) return prev;
               return [...prev, message];
@@ -116,20 +102,14 @@ export function useMessages(conversation: Conversation | null) {
     };
   }, [conversation, loadMessages]);
 
-  // Refresh messages after a send operation
+  // After sending: sync + reload to see own message
   const refreshAfterSend = useCallback(async () => {
     if (!conversation) return;
-    try {
-      await conversation.sync();
-    } catch {
-      // Best-effort sync
-    }
+    try { await conversation.sync(); } catch { /* best-effort */ }
     try {
       const msgs = await conversation.messages();
       setMessages(msgs);
-    } catch {
-      // Best-effort refresh
-    }
+    } catch { /* best-effort */ }
   }, [conversation]);
 
   const sendMessage = useCallback(
@@ -141,7 +121,6 @@ export function useMessages(conversation: Conversation | null) {
         if (isSyncNoise(err)) {
           console.log("[clam-chat] Send noise:", (err as Error).message);
         } else {
-          console.error("[clam-chat] Failed to send message:", err);
           throw err;
         }
       }
@@ -157,8 +136,7 @@ export function useMessages(conversation: Conversation | null) {
         await conversation.sendReaction({
           reference: messageId,
           referenceInboxId,
-          action:
-            action === "add" ? ReactionAction.Added : ReactionAction.Removed,
+          action: action === "add" ? ReactionAction.Added : ReactionAction.Removed,
           content: emoji,
           schema: ReactionSchema.Unicode,
         });
@@ -185,7 +163,6 @@ export function useMessages(conversation: Conversation | null) {
         if (isSyncNoise(err)) {
           console.log("[clam-chat] Reply noise:", (err as Error).message);
         } else {
-          console.error("[clam-chat] Failed to send reply:", err);
           throw err;
         }
       }
@@ -200,10 +177,7 @@ export function useMessages(conversation: Conversation | null) {
       try {
         await conversation.sendAttachment(attachment);
       } catch (err) {
-        if (!isSyncNoise(err)) {
-          console.error("[clam-chat] Failed to send attachment:", err);
-          throw err;
-        }
+        if (!isSyncNoise(err)) throw err;
       }
       await refreshAfterSend();
     },
@@ -216,10 +190,7 @@ export function useMessages(conversation: Conversation | null) {
       try {
         await conversation.sendRemoteAttachment(remoteAttachment);
       } catch (err) {
-        if (!isSyncNoise(err)) {
-          console.error("[clam-chat] Failed to send remote attachment:", err);
-          throw err;
-        }
+        if (!isSyncNoise(err)) throw err;
       }
       await refreshAfterSend();
     },

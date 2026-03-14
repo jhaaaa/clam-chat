@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IdentifierKind, type Conversation } from "@xmtp/browser-sdk";
+import { ConsentState, IdentifierKind, type Conversation } from "@xmtp/browser-sdk";
 import { isAddress } from "viem";
 import { normalize } from "viem/ens";
 import { useXmtp } from "@/components/providers/XmtpProvider";
@@ -91,6 +91,9 @@ export default function NewConversationDialog({
         }
         throw err;
       }
+
+      // Explicitly consent — you created this conversation, it shouldn't be a "request"
+      await dm.updateConsentState(ConsentState.Allowed);
 
       onCreated(dm);
     } catch (err) {

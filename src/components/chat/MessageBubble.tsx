@@ -58,8 +58,8 @@ interface MessageBubbleProps {
   isSelf: boolean;
   selfInboxId: string;
   senderAddress?: string;
-  onReact?: (messageId: string, referenceInboxId: string, emoji: string, action: "add" | "remove") => void;
-  onReply?: (message: DecodedMessage) => void;
+  onReact: (messageId: string, referenceInboxId: string, emoji: string, action: "add" | "remove") => void;
+  onReply: (message: DecodedMessage) => void;
   onScrollToMessage?: (messageId: string) => void;
 }
 
@@ -193,7 +193,7 @@ export default function MessageBubble({
   const reactions = getReactionSummary(message.reactions || [], selfInboxId);
 
   const handleReactionClick = (emoji: string, selfReacted: boolean) => {
-    onReact?.(message.id, message.senderInboxId, emoji, selfReacted ? "remove" : "add");
+    onReact(message.id, message.senderInboxId, emoji, selfReacted ? "remove" : "add");
   };
 
   return (
@@ -203,14 +203,14 @@ export default function MessageBubble({
         className="relative max-w-[75%]"
         onClick={() => setShowActions((prev) => !prev)}
       >
-        {/* Action buttons — show on hover (desktop) or tap (mobile), hidden for read-only */}
-        {(onReact || onReply) && <div
+        {/* Action buttons — show on hover (desktop) or tap (mobile) */}
+        <div
           className={`absolute top-0 items-center gap-0.5 ${
             showActions ? "flex" : "hidden group-hover:flex"
           } ${isSelf ? "-left-16" : "-right-16"}`}
         >
           <button
-            onClick={(e) => { e.stopPropagation(); setShowActions(false); onReply?.(message); }}
+            onClick={(e) => { e.stopPropagation(); setShowActions(false); onReply(message); }}
             className="rounded-full border border-gray-200 bg-white px-2 py-1 text-sm text-gray-400 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700"
             title="Reply"
           >
@@ -223,7 +223,7 @@ export default function MessageBubble({
           >
             ☺
           </button>
-        </div>}
+        </div>
 
         {/* Reaction picker */}
         {showPicker && (
@@ -233,7 +233,7 @@ export default function MessageBubble({
             }`}
           >
             <ReactionPicker
-              onSelect={(emoji) => { onReact?.(message.id, message.senderInboxId, emoji, "add"); setShowActions(false); }}
+              onSelect={(emoji) => { onReact(message.id, message.senderInboxId, emoji, "add"); setShowActions(false); }}
               onClose={() => { setShowPicker(false); setShowActions(false); }}
             />
           </div>

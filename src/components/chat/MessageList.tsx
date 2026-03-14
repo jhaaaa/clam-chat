@@ -8,8 +8,8 @@ interface MessageListProps {
   selfInboxId: string;
   isLoading: boolean;
   memberAddresses: Map<string, string>;
-  onReact?: (messageId: string, referenceInboxId: string, emoji: string, action: "add" | "remove") => void;
-  onReply?: (message: DecodedMessage) => void;
+  onReact: (messageId: string, referenceInboxId: string, emoji: string, action: "add" | "remove") => void;
+  onReply: (message: DecodedMessage) => void;
 }
 
 export default function MessageList({
