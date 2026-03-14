@@ -118,11 +118,15 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
     // Signal any in-flight connect() to swallow its result
     disconnectedRef.current = true;
     connectingRef.current = false;
+    // Close the XMTP client to release OPFS file handles and terminate workers
+    if (client) {
+      try { client.close(); } catch { /* best-effort */ }
+    }
     setClient(null);
     clearAuth();
     // Also disconnect wagmi so it doesn't auto-reconnect on page reload
     disconnectWagmi();
-  }, [setClient, clearAuth, disconnectWagmi]);
+  }, [client, setClient, clearAuth, disconnectWagmi]);
 
   const switchNetwork = useCallback(
     async (newNetwork: XmtpNetwork) => {
