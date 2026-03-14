@@ -32,25 +32,17 @@ export function useConversations(client: Client | null) {
       const allowed = await client.conversations.list({
         consentStates: [ConsentState.Allowed],
       });
-      // Filter to only active DMs and Groups (inactive = revoked installation)
-      const filtered = allowed.filter(
-        (c) => c instanceof Dm || c instanceof Group
+      // Filter to DMs and Groups (skip internal Sync/Oneshot types)
+      setConversations(
+        allowed.filter((c) => c instanceof Dm || c instanceof Group)
       );
-      const activeFlags = await Promise.all(
-        filtered.map((c) => c.isActive())
-      );
-      setConversations(filtered.filter((_, i) => activeFlags[i]));
 
       const unknown = await client.conversations.list({
         consentStates: [ConsentState.Unknown],
       });
-      const filteredUnknown = unknown.filter(
-        (c) => c instanceof Dm || c instanceof Group
+      setRequests(
+        unknown.filter((c) => c instanceof Dm || c instanceof Group)
       );
-      const unknownActiveFlags = await Promise.all(
-        filteredUnknown.map((c) => c.isActive())
-      );
-      setRequests(filteredUnknown.filter((_, i) => unknownActiveFlags[i]));
     } catch (err) {
       console.error("[clam-chat] Failed to load conversations:", err);
     } finally {
@@ -68,8 +60,6 @@ export function useConversations(client: Client | null) {
           onValue: (conversation) => {
             console.log("[clam-chat] New conversation streamed:", conversation.id);
             const addToList = async () => {
-              // Skip inactive conversations (revoked installations)
-              if (!(await conversation.isActive())) return;
               const consent = await conversation.consentState();
               if (consent === ConsentState.Allowed) {
                 setConversations((prev) => {

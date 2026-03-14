@@ -121,13 +121,7 @@ export default function NewGroupDialog({
         throw err;
       }
 
-      if (await group.isActive()) {
-        onCreated(group);
-      } else {
-        setError("Group was created but is inactive. Try refreshing the page.");
-        setIsCreating(false);
-        setStatus("");
-      }
+      onCreated(group);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to create group";

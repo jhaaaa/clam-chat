@@ -92,19 +92,6 @@ export default function NewConversationDialog({
         throw err;
       }
 
-      // Verify the DM is active (it won't be if a previous installation
-      // already had a DM with this person and was revoked)
-      const active = await dm.isActive();
-      if (!active) {
-        setError(
-          "This conversation is inactive due to a previous session. " +
-          "The other person needs to send you a message to reactivate it."
-        );
-        setIsCreating(false);
-        setStatus("");
-        return;
-      }
-
       onCreated(dm);
     } catch (err) {
       const message =
