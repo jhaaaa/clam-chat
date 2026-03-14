@@ -22,6 +22,7 @@ export function useMessages(conversation: Conversation | null) {
   const conversationIdRef = useRef<string | null>(null);
 
   // Sync + load messages. If sync fails, still try loading cached messages.
+  // On a second device there's no local cache, so retry sync once if empty.
   const loadMessages = useCallback(async () => {
     if (!conversation) return;
     setIsLoading(true);
@@ -33,7 +34,17 @@ export function useMessages(conversation: Conversation | null) {
       }
     }
     try {
-      const msgs = await conversation.messages();
+      let msgs = await conversation.messages();
+      // On a fresh device, sync may fail silently and return no messages.
+      // Retry once to give the network a second chance.
+      if (msgs.length === 0) {
+        try {
+          await conversation.sync();
+        } catch {
+          // best-effort retry
+        }
+        msgs = await conversation.messages();
+      }
       setMessages(msgs);
     } catch (err) {
       console.error("[clam-chat] Failed to load messages:", err);

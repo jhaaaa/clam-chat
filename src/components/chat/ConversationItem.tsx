@@ -88,13 +88,15 @@ export default function ConversationItem({
         console.error("[clam-chat] Error loading conversation label:", err);
       }
 
-      // Load last message preview — skip reactions/system messages to find actual content
+      // Load last message preview — sync first so second devices see latest
       try {
-        const recentMessages = await conversation.messages({ limit: 5n });
+        try { await conversation.sync(); } catch { /* best-effort */ }
+        const recentMessages = await conversation.messages({ limit: 20n });
         if (!cancelled && recentMessages.length > 0) {
-          // Find the most recent message with displayable text
+          // Find the most recent displayable message (skip reactions)
           let foundText = false;
           for (const msg of recentMessages) {
+            if (msg.contentType?.typeId === "reaction") continue;
             const text = extractText(msg);
             if (text) {
               setLastMessagePreview(
@@ -105,7 +107,7 @@ export default function ConversationItem({
               break;
             }
           }
-          // If no text found in recent messages, use the latest timestamp
+          // If no text found, still show the latest timestamp
           if (!foundText && recentMessages[0]) {
             setLastMessagePreview("[attachment]");
             setLastMessageTime(recentMessages[0].sentAt);
