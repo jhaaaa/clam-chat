@@ -45,6 +45,7 @@ export const useChatStore = create<ChatState>((set) => ({
       clientError: null,
       isClientLoading: false,
       selectedConversation: null,
+      lastMessagePreviews: {},
     }),
 
   // XMTP

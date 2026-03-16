@@ -3,13 +3,12 @@ import {
   ConsentState,
   Dm,
   Group,
-  isAttachment,
-  isRemoteAttachment,
   type Conversation,
   type Client,
   type DecodedMessage,
 } from "@xmtp/browser-sdk";
 import { useChatStore } from "@/store/chatStore";
+import { extractMessageText, truncatePreview } from "@/lib/messagePreview";
 
 function isConversation(c: unknown): c is Conversation {
   return c instanceof Dm || c instanceof Group;
@@ -155,6 +154,8 @@ export function useConversations(client: Client | null) {
   useEffect(() => {
     if (!client) return;
 
+    let cancelled = false;
+
     const startStream = async () => {
       try {
         const stream = await client.conversations.streamAllMessages({
@@ -164,7 +165,7 @@ export function useConversations(client: Client | null) {
             // Skip reactions — they aren't meaningful previews
             if (typeId === "reaction") return;
 
-            const preview = previewTextFromMessage(message);
+            const preview = truncatePreview(extractMessageText(message));
             if (preview && message.conversationId) {
               setLastMessagePreview(message.conversationId, preview, message.sentAt);
             }
@@ -173,7 +174,11 @@ export function useConversations(client: Client | null) {
             console.error("[clam-chat] All-messages stream error:", error);
           },
         });
-        allMessagesStreamRef.current = stream;
+        if (cancelled) {
+          stream.end();
+        } else {
+          allMessagesStreamRef.current = stream;
+        }
       } catch (err) {
         console.error("[clam-chat] Failed to start all-messages stream:", err);
       }
@@ -182,6 +187,7 @@ export function useConversations(client: Client | null) {
     startStream();
 
     return () => {
+      cancelled = true;
       allMessagesStreamRef.current?.end();
       allMessagesStreamRef.current = null;
     };
@@ -198,31 +204,4 @@ export function useConversations(client: Client | null) {
     isLoading,
     refresh: loadConversations,
   };
-}
-
-/** Extract a short preview string from a streamed message */
-function previewTextFromMessage(msg: DecodedMessage): string {
-  try {
-    if (isAttachment(msg)) {
-      const att = msg.content as { filename?: string };
-      return att?.filename ? `📎 ${att.filename}` : "📎 Attachment";
-    }
-    if (isRemoteAttachment(msg)) {
-      const att = msg.content as { filename?: string };
-      return att?.filename ? `📎 ${att.filename}` : "📎 Attachment";
-    }
-  } catch { /* fall through */ }
-
-  if (typeof msg.content === "string") {
-    const text = msg.content;
-    return text.length > 60 ? text.slice(0, 60) + "..." : text;
-  }
-
-  // Replies arrive as fallback text in streams
-  if (msg.fallback) {
-    const fb = msg.fallback;
-    return fb.length > 60 ? fb.slice(0, 60) + "..." : fb;
-  }
-
-  return "";
 }

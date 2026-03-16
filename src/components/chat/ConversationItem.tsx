@@ -1,48 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { type Conversation, type DecodedMessage, Dm, Group, isReply, isAttachment, isRemoteAttachment } from "@xmtp/browser-sdk";
-import type { EnrichedReply } from "@xmtp/browser-sdk";
+import { type Conversation, Dm, Group } from "@xmtp/browser-sdk";
 import { formatDistanceToNow } from "date-fns";
 import { ensClient } from "@/lib/ens";
 import { useChatStore } from "@/store/chatStore";
+import { extractMessageText, truncatePreview } from "@/lib/messagePreview";
 
 interface ConversationItemProps {
   conversation: Conversation;
   isSelected: boolean;
   onClick: () => void;
   searchFilter?: string;
-}
-
-function extractText(msg: DecodedMessage): string {
-  // Attachments — show filename or generic label
-  try {
-    if (isAttachment(msg)) {
-      const att = msg.content as { filename?: string };
-      return att.filename ? `📎 ${att.filename}` : "📎 Attachment";
-    }
-    if (isRemoteAttachment(msg)) {
-      const att = msg.content as { filename?: string };
-      return att.filename ? `📎 ${att.filename}` : "📎 Attachment";
-    }
-  } catch {
-    // fall through
-  }
-  try {
-    if (isReply(msg)) {
-      const reply = msg.content as EnrichedReply;
-      return typeof reply.content === "string" ? reply.content : msg.fallback || "";
-    }
-  } catch {
-    // isReply may throw for some content types — fall through
-  }
-  if (typeof msg.content === "string") return msg.content;
-  if (msg.content && typeof msg.content === "object") {
-    if ("text" in msg.content) return (msg.content as { text: string }).text;
-    if ("content" in msg.content) {
-      const inner = (msg.content as { content: unknown }).content;
-      if (typeof inner === "string") return inner;
-    }
-  }
-  return msg.fallback || "";
 }
 
 export default function ConversationItem({
@@ -118,11 +85,9 @@ export default function ConversationItem({
           let foundText = false;
           for (const msg of recentMessages) {
             if (msg.contentType?.typeId === "reaction") continue;
-            const text = extractText(msg);
+            const text = extractMessageText(msg);
             if (text) {
-              setLastMessagePreview(
-                text.length > 60 ? text.slice(0, 60) + "..." : text
-              );
+              setLastMessagePreview(truncatePreview(text));
               setLastMessageTime(msg.sentAt);
               foundText = true;
               break;
@@ -164,7 +129,7 @@ export default function ConversationItem({
         const query = searchFilter.toLowerCase();
 
         for (const msg of messages) {
-          const text = extractText(msg);
+          const text = extractMessageText(msg);
           const idx = text.toLowerCase().indexOf(query);
           if (idx !== -1) {
             // Build a snippet around the match

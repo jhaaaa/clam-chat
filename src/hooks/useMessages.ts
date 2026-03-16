@@ -9,6 +9,7 @@ import {
   type RemoteAttachment,
 } from "@xmtp/browser-sdk";
 import { useChatStore } from "@/store/chatStore";
+import { truncatePreview, attachmentPreviewLabel } from "@/lib/messagePreview";
 
 // XMTP SDK sometimes throws sync status messages as errors even on success.
 function isSyncNoise(err: unknown): boolean {
@@ -129,7 +130,7 @@ export function useMessages(conversation: Conversation | null) {
       }
       setLastMessagePreview(
         conversation.id,
-        trimmed.length > 60 ? trimmed.slice(0, 60) + "..." : trimmed,
+        truncatePreview(trimmed),
         new Date()
       );
       await refreshAfterSend();
@@ -177,7 +178,7 @@ export function useMessages(conversation: Conversation | null) {
       }
       setLastMessagePreview(
         conversation.id,
-        trimmed.length > 60 ? trimmed.slice(0, 60) + "..." : trimmed,
+        truncatePreview(trimmed),
         new Date()
       );
       await refreshAfterSend();
@@ -193,8 +194,7 @@ export function useMessages(conversation: Conversation | null) {
       } catch (err) {
         if (!isSyncNoise(err)) throw err;
       }
-      const label = attachment.filename ? `📎 ${attachment.filename}` : "📎 Attachment";
-      setLastMessagePreview(conversation.id, label, new Date());
+      setLastMessagePreview(conversation.id, truncatePreview(attachmentPreviewLabel(attachment.filename)), new Date());
       await refreshAfterSend();
     },
     [conversation, refreshAfterSend, setLastMessagePreview]
@@ -208,8 +208,7 @@ export function useMessages(conversation: Conversation | null) {
       } catch (err) {
         if (!isSyncNoise(err)) throw err;
       }
-      const label = remoteAttachment.filename ? `📎 ${remoteAttachment.filename}` : "📎 Attachment";
-      setLastMessagePreview(conversation.id, label, new Date());
+      setLastMessagePreview(conversation.id, truncatePreview(attachmentPreviewLabel(remoteAttachment.filename)), new Date());
       await refreshAfterSend();
     },
     [conversation, refreshAfterSend, setLastMessagePreview]
