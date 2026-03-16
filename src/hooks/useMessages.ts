@@ -8,6 +8,7 @@ import {
   type DecodedMessage,
   type RemoteAttachment,
 } from "@xmtp/browser-sdk";
+import { useChatStore } from "@/store/chatStore";
 
 // XMTP SDK sometimes throws sync status messages as errors even on success.
 function isSyncNoise(err: unknown): boolean {
@@ -20,6 +21,7 @@ export function useMessages(conversation: Conversation | null) {
   const [isLoading, setIsLoading] = useState(false);
   const streamRef = useRef<{ end: () => void } | null>(null);
   const conversationIdRef = useRef<string | null>(null);
+  const setLastMessagePreview = useChatStore((s) => s.setLastMessagePreview);
 
   // Sync conversation from network, then load messages from local DB
   const loadMessages = useCallback(async () => {
@@ -102,7 +104,7 @@ export function useMessages(conversation: Conversation | null) {
     };
   }, [conversation, loadMessages]);
 
-  // After sending: sync + reload to see own message
+  // After sending: sync + reload to see own message, update conversation list preview
   const refreshAfterSend = useCallback(async () => {
     if (!conversation) return;
     try { await conversation.sync(); } catch { /* best-effort */ }
@@ -115,8 +117,9 @@ export function useMessages(conversation: Conversation | null) {
   const sendMessage = useCallback(
     async (text: string) => {
       if (!conversation || !text.trim()) return;
+      const trimmed = text.trim();
       try {
-        await conversation.sendText(text.trim());
+        await conversation.sendText(trimmed);
       } catch (err) {
         if (isSyncNoise(err)) {
           console.log("[clam-chat] Send noise:", (err as Error).message);
@@ -124,9 +127,14 @@ export function useMessages(conversation: Conversation | null) {
           throw err;
         }
       }
+      setLastMessagePreview(
+        conversation.id,
+        trimmed.length > 60 ? trimmed.slice(0, 60) + "..." : trimmed,
+        new Date()
+      );
       await refreshAfterSend();
     },
-    [conversation, refreshAfterSend]
+    [conversation, refreshAfterSend, setLastMessagePreview]
   );
 
   const sendReaction = useCallback(
@@ -152,8 +160,9 @@ export function useMessages(conversation: Conversation | null) {
   const sendReply = useCallback(
     async (referenceId: string, referenceInboxId: string, text: string) => {
       if (!conversation || !text.trim()) return;
+      const trimmed = text.trim();
       try {
-        const encoded = await encodeText(text.trim());
+        const encoded = await encodeText(trimmed);
         await conversation.sendReply({
           reference: referenceId,
           referenceInboxId,
@@ -166,9 +175,14 @@ export function useMessages(conversation: Conversation | null) {
           throw err;
         }
       }
+      setLastMessagePreview(
+        conversation.id,
+        trimmed.length > 60 ? trimmed.slice(0, 60) + "..." : trimmed,
+        new Date()
+      );
       await refreshAfterSend();
     },
-    [conversation, refreshAfterSend]
+    [conversation, refreshAfterSend, setLastMessagePreview]
   );
 
   const sendInlineAttachment = useCallback(
@@ -179,9 +193,11 @@ export function useMessages(conversation: Conversation | null) {
       } catch (err) {
         if (!isSyncNoise(err)) throw err;
       }
+      const label = attachment.filename ? `📎 ${attachment.filename}` : "📎 Attachment";
+      setLastMessagePreview(conversation.id, label, new Date());
       await refreshAfterSend();
     },
-    [conversation, refreshAfterSend]
+    [conversation, refreshAfterSend, setLastMessagePreview]
   );
 
   const sendRemoteAttachmentMsg = useCallback(
@@ -192,9 +208,11 @@ export function useMessages(conversation: Conversation | null) {
       } catch (err) {
         if (!isSyncNoise(err)) throw err;
       }
+      const label = remoteAttachment.filename ? `📎 ${remoteAttachment.filename}` : "📎 Attachment";
+      setLastMessagePreview(conversation.id, label, new Date());
       await refreshAfterSend();
     },
-    [conversation, refreshAfterSend]
+    [conversation, refreshAfterSend, setLastMessagePreview]
   );
 
   return {

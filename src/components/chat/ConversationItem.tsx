@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { type Conversation, type DecodedMessage, Dm, Group, isReply } from "@xmtp/browser-sdk";
+import { type Conversation, type DecodedMessage, Dm, Group, isReply, isAttachment, isRemoteAttachment } from "@xmtp/browser-sdk";
 import type { EnrichedReply } from "@xmtp/browser-sdk";
 import { formatDistanceToNow } from "date-fns";
 import { ensClient } from "@/lib/ens";
+import { useChatStore } from "@/store/chatStore";
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -12,6 +13,19 @@ interface ConversationItemProps {
 }
 
 function extractText(msg: DecodedMessage): string {
+  // Attachments — show filename or generic label
+  try {
+    if (isAttachment(msg)) {
+      const att = msg.content as { filename?: string };
+      return att.filename ? `📎 ${att.filename}` : "📎 Attachment";
+    }
+    if (isRemoteAttachment(msg)) {
+      const att = msg.content as { filename?: string };
+      return att.filename ? `📎 ${att.filename}` : "📎 Attachment";
+    }
+  } catch {
+    // fall through
+  }
   try {
     if (isReply(msg)) {
       const reply = msg.content as EnrichedReply;
@@ -44,16 +58,17 @@ export default function ConversationItem({
   const [memberCount, setMemberCount] = useState(0);
   const [messageMatch, setMessageMatch] = useState<string | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const storePreview = useChatStore((s) => s.lastMessagePreviews[conversation.id]);
 
   const isDm = conversation instanceof Dm;
 
+  // Load conversation label (address, ENS, group name) — only on conversation change
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       try {
         if (isDm) {
-          // Get peer's Ethereum address from members
           const peerInboxId = await (conversation as Dm).peerInboxId();
           const members = await conversation.members();
           const peer = members.find((m) => m.inboxId === peerInboxId);
@@ -63,7 +78,6 @@ export default function ConversationItem({
             const shortAddr = peerAddress.slice(0, 6) + "..." + peerAddress.slice(-4);
             setLabel(shortAddr);
 
-            // Try reverse ENS lookup
             try {
               const ensName = await ensClient.getEnsName({ address: peerAddress as `0x${string}` });
               if (!cancelled && ensName) {
@@ -87,12 +101,20 @@ export default function ConversationItem({
       } catch (err) {
         console.error("[clam-chat] Error loading conversation label:", err);
       }
+    };
 
-      // Load last message preview — uses locally cached messages (synced by syncAll)
+    load();
+    return () => { cancelled = true; };
+  }, [conversation, isDm]);
+
+  // Load last message preview from SDK on mount/conversation change
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPreview = async () => {
       try {
         const recentMessages = await conversation.messages({ limit: 20n });
         if (!cancelled && recentMessages.length > 0) {
-          // Find the most recent displayable message (skip reactions)
           let foundText = false;
           for (const msg of recentMessages) {
             if (msg.contentType?.typeId === "reaction") continue;
@@ -106,7 +128,6 @@ export default function ConversationItem({
               break;
             }
           }
-          // If no text found, still show the latest timestamp
           if (!foundText && recentMessages[0]) {
             setLastMessagePreview("[attachment]");
             setLastMessageTime(recentMessages[0].sentAt);
@@ -117,11 +138,9 @@ export default function ConversationItem({
       }
     };
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [conversation, isDm]);
+    loadPreview();
+    return () => { cancelled = true; };
+  }, [conversation]);
 
   // Debounced message content search
   useEffect(() => {
@@ -167,6 +186,14 @@ export default function ConversationItem({
 
     return () => clearTimeout(searchTimerRef.current);
   }, [searchFilter, label, conversation]);
+
+  // Use store preview if it's newer than the SDK-fetched one
+  const displayPreview = storePreview && (!lastMessageTime || storePreview.time > lastMessageTime)
+    ? storePreview.text
+    : lastMessagePreview;
+  const displayTime = storePreview && (!lastMessageTime || storePreview.time > lastMessageTime)
+    ? storePreview.time
+    : lastMessageTime;
 
   // Hide if search active and neither label nor message content matches
   const labelMatches = !searchFilter || !label || label.toLowerCase().includes(searchFilter.toLowerCase());
@@ -214,15 +241,15 @@ export default function ConversationItem({
             <p className="mt-0.5 truncate pl-6 text-xs text-indigo-600 dark:text-indigo-400">
               {messageMatch}
             </p>
-          ) : lastMessagePreview ? (
+          ) : displayPreview ? (
             <p className="mt-0.5 truncate pl-6 text-sm text-gray-600 dark:text-gray-400">
-              {lastMessagePreview}
+              {displayPreview}
             </p>
           ) : null}
         </div>
-        {lastMessageTime && (
+        {displayTime && (
           <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
-            {formatDistanceToNow(lastMessageTime, { addSuffix: false })}
+            {formatDistanceToNow(displayTime, { addSuffix: false })}
           </span>
         )}
       </div>

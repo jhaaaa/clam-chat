@@ -3,8 +3,11 @@ import {
   ConsentState,
   Dm,
   Group,
+  isAttachment,
+  isRemoteAttachment,
   type Conversation,
   type Client,
+  type DecodedMessage,
 } from "@xmtp/browser-sdk";
 import { useChatStore } from "@/store/chatStore";
 
@@ -145,6 +148,45 @@ export function useConversations(client: Client | null) {
     };
   }, [client, loadConversations]);
 
+  // Stream all messages across all conversations to update sidebar previews in real time
+  const setLastMessagePreview = useChatStore((s) => s.setLastMessagePreview);
+  const allMessagesStreamRef = useRef<{ end: () => void } | null>(null);
+
+  useEffect(() => {
+    if (!client) return;
+
+    const startStream = async () => {
+      try {
+        const stream = await client.conversations.streamAllMessages({
+          consentStates: [ConsentState.Allowed, ConsentState.Unknown],
+          onValue: (message: DecodedMessage) => {
+            const typeId = message.contentType?.typeId;
+            // Skip reactions — they aren't meaningful previews
+            if (typeId === "reaction") return;
+
+            const preview = previewTextFromMessage(message);
+            if (preview && message.conversationId) {
+              setLastMessagePreview(message.conversationId, preview, message.sentAt);
+            }
+          },
+          onError: (error: Error) => {
+            console.error("[clam-chat] All-messages stream error:", error);
+          },
+        });
+        allMessagesStreamRef.current = stream;
+      } catch (err) {
+        console.error("[clam-chat] Failed to start all-messages stream:", err);
+      }
+    };
+
+    startStream();
+
+    return () => {
+      allMessagesStreamRef.current?.end();
+      allMessagesStreamRef.current = null;
+    };
+  }, [client, setLastMessagePreview]);
+
   // Load on mount and when version changes (consent update, new conversation, etc.)
   useEffect(() => {
     loadConversations();
@@ -156,4 +198,31 @@ export function useConversations(client: Client | null) {
     isLoading,
     refresh: loadConversations,
   };
+}
+
+/** Extract a short preview string from a streamed message */
+function previewTextFromMessage(msg: DecodedMessage): string {
+  try {
+    if (isAttachment(msg)) {
+      const att = msg.content as { filename?: string };
+      return att?.filename ? `📎 ${att.filename}` : "📎 Attachment";
+    }
+    if (isRemoteAttachment(msg)) {
+      const att = msg.content as { filename?: string };
+      return att?.filename ? `📎 ${att.filename}` : "📎 Attachment";
+    }
+  } catch { /* fall through */ }
+
+  if (typeof msg.content === "string") {
+    const text = msg.content;
+    return text.length > 60 ? text.slice(0, 60) + "..." : text;
+  }
+
+  // Replies arrive as fallback text in streams
+  if (msg.fallback) {
+    const fb = msg.fallback;
+    return fb.length > 60 ? fb.slice(0, 60) + "..." : fb;
+  }
+
+  return "";
 }

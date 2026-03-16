@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   isAttachment,
   isRemoteAttachment,
@@ -14,14 +15,54 @@ interface AttachmentDisplayProps {
   isSelf: boolean;
 }
 
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute right-4 top-4 rounded-full bg-black/50 px-3 py-1.5 text-lg text-white/80 transition-colors hover:bg-black/70 hover:text-white"
+      >
+        ✕
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>,
+    document.body
+  );
+}
+
 function InlineImage({ src, alt }: { src: string; alt: string }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="max-h-64 max-w-full rounded-lg"
-      loading="lazy"
-    />
+    <>
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-64 max-w-full cursor-pointer rounded-lg transition-opacity hover:opacity-90"
+        loading="lazy"
+        onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }}
+      />
+      {lightboxOpen && (
+        <ImageLightbox src={src} alt={alt} onClose={closeLightbox} />
+      )}
+    </>
   );
 }
 
