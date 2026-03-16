@@ -28,6 +28,8 @@ interface ChatState {
   setSelectedConversation: (conv: Conversation | null) => void;
   conversationListVersion: number;
   refreshConversationList: () => void;
+  lastMessagePreviews: Record<string, { text: string; time: Date }>;
+  setLastMessagePreview: (conversationId: string, text: string, time: Date) => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -43,6 +45,7 @@ export const useChatStore = create<ChatState>((set) => ({
       clientError: null,
       isClientLoading: false,
       selectedConversation: null,
+      lastMessagePreviews: {},
     }),
 
   // XMTP
@@ -73,4 +76,12 @@ export const useChatStore = create<ChatState>((set) => ({
   conversationListVersion: 0,
   refreshConversationList: () =>
     set((state) => ({ conversationListVersion: state.conversationListVersion + 1 })),
+  lastMessagePreviews: {},
+  setLastMessagePreview: (conversationId, text, time) =>
+    set((state) => ({
+      lastMessagePreviews: {
+        ...state.lastMessagePreviews,
+        [conversationId]: { text, time },
+      },
+    })),
 }));

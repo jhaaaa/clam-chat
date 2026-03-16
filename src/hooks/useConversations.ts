@@ -5,8 +5,10 @@ import {
   Group,
   type Conversation,
   type Client,
+  type DecodedMessage,
 } from "@xmtp/browser-sdk";
 import { useChatStore } from "@/store/chatStore";
+import { extractMessageText, truncatePreview } from "@/lib/messagePreview";
 
 function isConversation(c: unknown): c is Conversation {
   return c instanceof Dm || c instanceof Group;
@@ -144,6 +146,52 @@ export function useConversations(client: Client | null) {
       consentStreamRef.current = null;
     };
   }, [client, loadConversations]);
+
+  // Stream all messages across all conversations to update sidebar previews in real time
+  const setLastMessagePreview = useChatStore((s) => s.setLastMessagePreview);
+  const allMessagesStreamRef = useRef<{ end: () => void } | null>(null);
+
+  useEffect(() => {
+    if (!client) return;
+
+    let cancelled = false;
+
+    const startStream = async () => {
+      try {
+        const stream = await client.conversations.streamAllMessages({
+          consentStates: [ConsentState.Allowed, ConsentState.Unknown],
+          onValue: (message: DecodedMessage) => {
+            const typeId = message.contentType?.typeId;
+            // Skip reactions — they aren't meaningful previews
+            if (typeId === "reaction") return;
+
+            const preview = truncatePreview(extractMessageText(message));
+            if (preview && message.conversationId) {
+              setLastMessagePreview(message.conversationId, preview, message.sentAt);
+            }
+          },
+          onError: (error: Error) => {
+            console.error("[clam-chat] All-messages stream error:", error);
+          },
+        });
+        if (cancelled) {
+          stream.end();
+        } else {
+          allMessagesStreamRef.current = stream;
+        }
+      } catch (err) {
+        console.error("[clam-chat] Failed to start all-messages stream:", err);
+      }
+    };
+
+    startStream();
+
+    return () => {
+      cancelled = true;
+      allMessagesStreamRef.current?.end();
+      allMessagesStreamRef.current = null;
+    };
+  }, [client, setLastMessagePreview]);
 
   // Load on mount and when version changes (consent update, new conversation, etc.)
   useEffect(() => {

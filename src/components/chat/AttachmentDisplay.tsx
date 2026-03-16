@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   isAttachment,
   isRemoteAttachment,
@@ -14,14 +15,84 @@ interface AttachmentDisplayProps {
   isSelf: boolean;
 }
 
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocused = useRef<Element | null>(null);
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement;
+    closeButtonRef.current?.focus();
+    return () => {
+      if (previouslyFocused.current instanceof HTMLElement) {
+        previouslyFocused.current.focus();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      // Trap tab focus within the dialog (only one focusable element: the close button)
+      if (e.key === "Tab") {
+        e.preventDefault();
+        closeButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${alt} — full size preview`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <button
+        ref={closeButtonRef}
+        type="button"
+        aria-label="Close lightbox"
+        onClick={onClose}
+        className="absolute right-4 top-4 rounded-full bg-black/50 px-3 py-1.5 text-lg text-white/80 transition-colors hover:bg-black/70 hover:text-white"
+      >
+        ✕
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>,
+    document.body
+  );
+}
+
 function InlineImage({ src, alt }: { src: string; alt: string }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="max-h-64 max-w-full rounded-lg"
-      loading="lazy"
-    />
+    <>
+      <button
+        type="button"
+        aria-label={`View ${alt} full size`}
+        className="inline-block rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="max-h-64 max-w-full cursor-pointer rounded-lg transition-opacity hover:opacity-90"
+          loading="lazy"
+        />
+      </button>
+      {lightboxOpen && (
+        <ImageLightbox src={src} alt={alt} onClose={closeLightbox} />
+      )}
+    </>
   );
 }
 
