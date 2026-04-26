@@ -1,50 +1,48 @@
 import { Client, ConsentState, getInboxIdForIdentifier, type Signer } from "@xmtp/browser-sdk";
-import type { XmtpNetwork } from "./constants";
-import { XMTP_NETWORKS } from "./constants";
+import { XMTP_ENV, LOCAL_STORAGE_KEYS } from "./constants";
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(message)), ms)
-    ),
-  ]);
-}
-
-export async function createXmtpClient(
-  signer: Signer,
-  network: XmtpNetwork
-): Promise<Client> {
-  const env = XMTP_NETWORKS[network].env;
+export async function createXmtpClient(signer: Signer): Promise<Client> {
+  // Request persistent storage so Chrome (and other browsers) won't evict the
+  // OPFS database. Without this, OPFS is "best effort" and Chrome can clear it
+  // for origins not visited recently — which is why messages disappear after days.
+  if (navigator.storage?.persist) {
+    const persisted = await navigator.storage.persist();
+    if (!persisted) {
+      console.warn("[clam-chat] Persistent storage not granted — OPFS may be evicted by the browser");
+    }
+  }
 
   try {
-    console.log("[clam-chat] Creating client...");
     const client = await Client.create(signer, {
-      env,
+      env: XMTP_ENV,
       appVersion: "clam-chat/1.0",
     });
-    console.log("[clam-chat] Client created successfully");
 
-    console.log("[clam-chat] Syncing conversations...");
-    await withTimeout(
-      client.conversations.syncAll([ConsentState.Allowed, ConsentState.Unknown]),
-      15_000,
-      "Conversation sync timed out"
-    );
-    console.log("[clam-chat] Sync complete");
+    // Detect if OPFS was cleared since last session. When OPFS is cleared,
+    // Client.create() creates a new installation with no local message history.
+    // Calling sendSyncRequest() asks any other installations (other browsers/devices)
+    // to upload an encrypted archive so this installation can restore history.
+    const storedId = localStorage.getItem(LOCAL_STORAGE_KEYS.installationId);
+    const currentId = client.installationId;
+    if (currentId && storedId !== currentId) {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.installationId, currentId);
+      // Fire and forget — if no other installations exist, this is a no-op.
+      client.sendSyncRequest().catch(() => {});
+    }
+
     return client;
   } catch (err) {
     // If we hit 10/10 installations, revoke all old ones and retry.
-    // This only happens if the user has signed in on 10+ different
-    // browsers/devices — very rare in practice.
     if (err instanceof Error && err.message.includes("10/10 installations")) {
       console.warn("[clam-chat] Hit installation limit, revoking all old installations...");
-      await revokeAllInstallations(signer, env);
+      await revokeAllInstallations(signer, XMTP_ENV);
       const client = await Client.create(signer, {
-        env,
+        env: XMTP_ENV,
         appVersion: "clam-chat/1.0",
       });
-      await client.conversations.syncAll([ConsentState.Allowed, ConsentState.Unknown]);
+      if (client.installationId) {
+        localStorage.setItem(LOCAL_STORAGE_KEYS.installationId, client.installationId);
+      }
       return client;
     }
     throw err;
@@ -55,7 +53,6 @@ async function revokeAllInstallations(
   signer: Signer,
   env: "dev" | "production" | "local"
 ): Promise<void> {
-  // Static methods — no Client instance needed, so the 10/10 limit can't block us
   const identifier = await signer.getIdentifier();
   const inboxId = await getInboxIdForIdentifier(identifier, env);
   if (!inboxId) throw new Error("No inbox found for this address");

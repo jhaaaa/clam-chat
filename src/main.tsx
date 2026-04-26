@@ -19,7 +19,6 @@ if (darkPref === "true" || (darkPref === null && window.matchMedia("(prefers-col
 for (const [oldKey, newKey] of [
   ["hollachat-dark-mode", "clam-chat-dark-mode"],
   ["hollachat-private-key", "clam-chat-private-key"],
-  ["hollachat-network", "clam-chat-network"],
 ] as const) {
   const v = localStorage.getItem(oldKey);
   if (v !== null) {

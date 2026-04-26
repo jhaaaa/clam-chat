@@ -11,7 +11,6 @@ import {
   getAddressFromPrivateKey,
 } from "@/lib/signer";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import NetworkSwitch from "@/components/ui/NetworkSwitch";
 
 function WalletLoadingState({
   authMethod,
@@ -224,14 +223,6 @@ export default function LandingPage() {
 
             {showAdvanced && (
               <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/50">
-                {/* Network switch */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Network</span>
-                  <NetworkSwitch />
-                </div>
-
-                <div className="h-px bg-gray-200 dark:bg-gray-700" />
-
                 {/* Create another account */}
                 {hasSavedKey && (
                   <button
