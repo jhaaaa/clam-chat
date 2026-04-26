@@ -14,7 +14,6 @@ import {
   createWalletSigner,
   loadPrivateKey,
 } from "@/lib/signer";
-import type { XmtpNetwork } from "@/lib/constants";
 import { useDisconnect, useWalletClient } from "wagmi";
 
 interface XmtpContextValue {
@@ -23,7 +22,6 @@ interface XmtpContextValue {
   error: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
-  switchNetwork: (network: XmtpNetwork) => Promise<void>;
 }
 
 const XmtpContext = createContext<XmtpContextValue>({
@@ -32,7 +30,6 @@ const XmtpContext = createContext<XmtpContextValue>({
   error: null,
   connect: async () => {},
   disconnect: () => {},
-  switchNetwork: async () => {},
 });
 
 export function useXmtp() {
@@ -49,8 +46,6 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
     setClientLoading,
     clientError,
     setClientError,
-    network,
-    setNetwork,
     clearAuth,
   } = useChatStore();
 
@@ -84,7 +79,7 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
       }
 
       console.log("[clam-chat] Creating XMTP client...");
-      const xmtpClient = await createXmtpClient(signer, network);
+      const xmtpClient = await createXmtpClient(signer);
       console.log("[clam-chat] XMTP client created, inboxId:", xmtpClient.inboxId);
       // Don't update state if user disconnected while we were connecting
       if (!disconnectedRef.current) {
@@ -108,7 +103,6 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
     authMethod,
     address,
     walletClient,
-    network,
     setClient,
     setClientLoading,
     setClientError,
@@ -127,14 +121,6 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
     // Also disconnect wagmi so it doesn't auto-reconnect on page reload
     disconnectWagmi();
   }, [client, setClient, clearAuth, disconnectWagmi]);
-
-  const switchNetwork = useCallback(
-    async (newNetwork: XmtpNetwork) => {
-      setClient(null);
-      setNetwork(newNetwork);
-    },
-    [setClient, setNetwork]
-  );
 
   // Auto-connect when auth is set and we don't have a client
   useEffect(() => {
@@ -174,7 +160,6 @@ export default function XmtpProvider({ children }: { children: ReactNode }) {
         error: clientError,
         connect,
         disconnect,
-        switchNetwork,
       }}
     >
       {children}

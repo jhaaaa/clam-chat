@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import type { Client, Conversation } from "@xmtp/browser-sdk";
-import type { XmtpNetwork } from "@/lib/constants";
 import type { AuthMethod } from "@/lib/types";
-import { DEFAULT_NETWORK, LOCAL_STORAGE_KEYS } from "@/lib/constants";
+import { LOCAL_STORAGE_KEYS } from "@/lib/constants";
 
 interface ChatState {
   // Auth
@@ -18,10 +17,6 @@ interface ChatState {
   setClientLoading: (loading: boolean) => void;
   clientError: string | null;
   setClientError: (error: string | null) => void;
-
-  // Network
-  network: XmtpNetwork;
-  setNetwork: (network: XmtpNetwork) => void;
 
   // Conversations
   selectedConversation: Conversation | null;
@@ -55,21 +50,6 @@ export const useChatStore = create<ChatState>((set) => ({
   setClientLoading: (loading) => set({ isClientLoading: loading }),
   clientError: null,
   setClientError: (error) => set({ clientError: error }),
-
-  // Network — load from localStorage or use default
-  network:
-    (typeof window !== "undefined"
-      ? (localStorage.getItem(
-          LOCAL_STORAGE_KEYS.network
-        ) as XmtpNetwork | null)
-      : null) ?? DEFAULT_NETWORK,
-  setNetwork: (network) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.network, network);
-    }
-    set({ network });
-  },
-
   // Conversations
   selectedConversation: null,
   setSelectedConversation: (conv) => set({ selectedConversation: conv }),

@@ -11,7 +11,6 @@ import {
 import { useChatStore } from "@/store/chatStore";
 import { truncatePreview, attachmentPreviewLabel } from "@/lib/messagePreview";
 
-// XMTP SDK sometimes throws sync status messages as errors even on success.
 function isSyncNoise(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : "";
   return msg.includes("synced") && msg.includes("succeeded");
@@ -24,96 +23,89 @@ export function useMessages(conversation: Conversation | null) {
   const conversationIdRef = useRef<string | null>(null);
   const setLastMessagePreview = useChatStore((s) => s.setLastMessagePreview);
 
-  // Sync conversation from network, then load messages from local DB
-  const loadMessages = useCallback(async () => {
+  const loadMessagesFromDb = useCallback(async () => {
     if (!conversation) return;
-    setIsLoading(true);
-    try {
-      await conversation.sync();
-    } catch (err) {
-      if (!isSyncNoise(err)) {
-        console.warn("[clam-chat] Sync failed:", err);
-      }
-    }
     try {
       const msgs = await conversation.messages();
       setMessages(msgs);
     } catch (err) {
       console.error("[clam-chat] Failed to load messages:", err);
-    } finally {
-      setIsLoading(false);
     }
   }, [conversation]);
 
-  // When conversation changes: load history, start streaming
+  // Sync from network then reload — used when returning focus or explicitly refreshing.
+  const loadMessages = useCallback(async () => {
+    if (!conversation) return;
+    setIsLoading(true);
+    try {
+      // Only sync from the network if the conversation is active. Inactive
+      // conversations (e.g. from a revoked installation) will throw on sync,
+      // but we can still show their messages from the local DB.
+      const active = await conversation.isActive();
+      if (active) {
+        await conversation.sync();
+      }
+    } catch (err) {
+      if (!isSyncNoise(err)) console.warn("[clam-chat] Sync failed:", err);
+    }
+    await loadMessagesFromDb();
+    setIsLoading(false);
+  }, [conversation, loadMessagesFromDb]);
+
   useEffect(() => {
     if (!conversation) {
       setMessages([]);
       return;
     }
 
+    // Don't restart everything if the same conversation is still selected.
     if (conversationIdRef.current === conversation.id) return;
     conversationIdRef.current = conversation.id;
 
     streamRef.current?.end();
     streamRef.current = null;
+    setMessages([]);
+    setIsLoading(true);
 
-    loadMessages();
+    // Load from local DB immediately for instant display.
+    loadMessagesFromDb().then(() => setIsLoading(false));
 
-    // Reload messages from local DB without network sync
-    // (the stream already wrote the data to the local DB)
-    const reloadMessages = async () => {
-      try {
-        const msgs = await conversation.messages();
-        setMessages(msgs);
-      } catch (err) {
-        console.error("[clam-chat] Failed to reload messages:", err);
-      }
-    };
-
-    const startStream = async () => {
-      try {
-        const stream = await conversation.stream({
-          onValue: (message: DecodedMessage) => {
-            const typeId = message.contentType?.typeId;
-            // Reactions and replies need a full reload for enriched data
-            if (typeId === "reaction" || typeId === "reply") {
-              reloadMessages();
-              return;
-            }
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === message.id)) return prev;
-              return [...prev, message];
-            });
-          },
-          onError: (error: Error) => {
-            console.error("[clam-chat] Message stream error:", error);
-          },
-        });
-        streamRef.current = stream;
-      } catch (err) {
-        console.error("[clam-chat] Failed to start message stream:", err);
-      }
-    };
-
-    startStream();
+    // Start streaming. Per the XMTP docs, the stream delivers catch-up messages
+    // (everything missed since last sync) before real-time messages, so we don't
+    // need to call sync() first — the stream handles it.
+    conversation
+      .stream({
+        onValue: (message: DecodedMessage) => {
+          const typeId = message.contentType?.typeId;
+          // Reactions and replies mutate existing messages — reload from DB.
+          if (typeId === "reaction" || typeId === "reply") {
+            loadMessagesFromDb();
+            return;
+          }
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === message.id)) return prev;
+            return [...prev, message];
+          });
+        },
+        onError: (err: Error) => console.error("[clam-chat] Message stream error:", err),
+      })
+      .then((s) => { streamRef.current = s; })
+      .catch((err) => console.error("[clam-chat] Failed to start message stream:", err));
 
     return () => {
       streamRef.current?.end();
       streamRef.current = null;
       conversationIdRef.current = null;
     };
-  }, [conversation, loadMessages]);
+  }, [conversation, loadMessagesFromDb]);
 
-  // After sending: sync + reload to see own message, update conversation list preview
   const refreshAfterSend = useCallback(async () => {
     if (!conversation) return;
-    try { await conversation.sync(); } catch { /* best-effort */ }
     try {
-      const msgs = await conversation.messages();
-      setMessages(msgs);
+      if (await conversation.isActive()) await conversation.sync();
     } catch { /* best-effort */ }
-  }, [conversation]);
+    await loadMessagesFromDb();
+  }, [conversation, loadMessagesFromDb]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -128,11 +120,7 @@ export function useMessages(conversation: Conversation | null) {
           throw err;
         }
       }
-      setLastMessagePreview(
-        conversation.id,
-        truncatePreview(trimmed),
-        new Date()
-      );
+      setLastMessagePreview(conversation.id, truncatePreview(trimmed), new Date());
       await refreshAfterSend();
     },
     [conversation, refreshAfterSend, setLastMessagePreview]
@@ -150,9 +138,7 @@ export function useMessages(conversation: Conversation | null) {
           schema: ReactionSchema.Unicode,
         });
       } catch (err) {
-        if (!isSyncNoise(err)) {
-          console.error("[clam-chat] Failed to send reaction:", err);
-        }
+        if (!isSyncNoise(err)) console.error("[clam-chat] Failed to send reaction:", err);
       }
     },
     [conversation]
@@ -176,11 +162,7 @@ export function useMessages(conversation: Conversation | null) {
           throw err;
         }
       }
-      setLastMessagePreview(
-        conversation.id,
-        truncatePreview(trimmed),
-        new Date()
-      );
+      setLastMessagePreview(conversation.id, truncatePreview(trimmed), new Date());
       await refreshAfterSend();
     },
     [conversation, refreshAfterSend, setLastMessagePreview]
