@@ -38,13 +38,7 @@ export function useMessages(conversation: Conversation | null) {
     if (!conversation) return;
     setIsLoading(true);
     try {
-      // Only sync from the network if the conversation is active. Inactive
-      // conversations (e.g. from a revoked installation) will throw on sync,
-      // but we can still show their messages from the local DB.
-      const active = await conversation.isActive();
-      if (active) {
-        await conversation.sync();
-      }
+      await conversation.sync();
     } catch (err) {
       if (!isSyncNoise(err)) console.warn("[clam-chat] Sync failed:", err);
     }
@@ -99,7 +93,7 @@ export function useMessages(conversation: Conversation | null) {
   const refreshAfterSend = useCallback(async () => {
     if (!conversation) return;
     try {
-      if (await conversation.isActive()) await conversation.sync();
+      await conversation.sync();
     } catch { /* best-effort */ }
     await loadMessagesFromDb();
   }, [conversation, loadMessagesFromDb]);
