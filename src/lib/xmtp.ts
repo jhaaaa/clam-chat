@@ -1,4 +1,4 @@
-import { Client, ConsentState, getInboxIdForIdentifier, type Signer } from "@xmtp/browser-sdk";
+import { Client, getInboxIdForIdentifier, type Signer } from "@xmtp/browser-sdk";
 import { XMTP_ENV, LOCAL_STORAGE_KEYS } from "./constants";
 
 export async function createXmtpClient(signer: Signer): Promise<Client> {
@@ -26,7 +26,15 @@ export async function createXmtpClient(signer: Signer): Promise<Client> {
     const currentId = client.installationId;
     if (currentId && storedId !== currentId) {
       localStorage.setItem(LOCAL_STORAGE_KEYS.installationId, currentId);
-      // Fire and forget — if no other installations exist, this is a no-op.
+      if (storedId) {
+        // OPFS was cleared → new installation created. Revoke all orphaned old
+        // installations (they can't decrypt anything without their OPFS keys anyway).
+        console.warn("[clam-chat] OPFS was cleared — revoking stale installations. Previous:", storedId, "New:", currentId);
+        client.revokeAllOtherInstallations().catch((err) => {
+          console.warn("[clam-chat] Failed to revoke stale installations:", err);
+        });
+      }
+      // Ask other installations to push message history to this new installation.
       client.sendSyncRequest().catch(() => {});
     }
 

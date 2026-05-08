@@ -67,12 +67,9 @@ export function useMessages(conversation: Conversation | null) {
     setMessages([]);
     setIsLoading(true);
 
-    // Load from local DB immediately for instant display.
-    loadMessagesFromDb().then(() => setIsLoading(false));
-
-    // Start streaming. Per the XMTP docs, the stream delivers catch-up messages
-    // (everything missed since last sync) before real-time messages, so we don't
-    // need to call sync() first — the stream handles it.
+    // Sync from network then load from DB. conversation.sync() is required to
+    // pull message history — the stream only delivers new real-time messages.
+    loadMessages();
     conversation
       .stream({
         onValue: (message: DecodedMessage) => {
